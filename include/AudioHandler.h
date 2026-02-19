@@ -22,6 +22,7 @@ typedef int socklen_t;
 #include <vector>
 #include "lowwi.hpp"
 
+
 class NetworkHandler;
 
 struct AudioContext {
