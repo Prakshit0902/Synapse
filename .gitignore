@@ -1,4 +1,4 @@
-# --- C++ / Visual Studio Junk ---
+# C++ / Visual Studio Junk 
 .vs/
 out/
 build/
@@ -18,7 +18,7 @@ Release/
 *.exe
 vcpkg_installed/
 
-# --- Python Specific ---
+# Python Specific 
 python/venv/
 python/synapse_env/
 **/__pycache__/
@@ -35,7 +35,7 @@ cmake-build-*/
 # Python Cache
 __pycache__/
 
-# --- AI Models (VERY IMPORTANT - DO NOT COMMIT) ---
+# AI Models ( DO NOT COMMIT)
 *.pt
 *.pth
 *.onnx
@@ -59,6 +59,6 @@ response.mp3
 trinetra.db
 vision_pro.db
 
-# --- OS Specific ---
+# OS Specific 
 .DS_Store
 Thumbs.db
