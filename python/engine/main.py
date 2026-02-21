@@ -59,7 +59,7 @@ class Synapse:
                 command = None  # Har baar reset karo
                 audio = None
 
-                # --- STEP 1: STATUS CHECK ---
+                #  STEP 1: STATUS CHECK 
                 hardware_status = self.music.check_status()
 
                 # Agar hardware bajne laga, to manual flag hata do (Auto-sync)
@@ -69,7 +69,7 @@ class Synapse:
                 # Decision: Kya Music Mode chalana hai?
                 is_music_mode = hardware_status or self.manual_music_mode
 
-                # --- STEP 2: LISTENING MODES ---
+                #  STEP 2: LISTENING MODES 
 
                 # MODE A: MUSIC PLAYING (Wake Word)
                 if is_music_mode:
@@ -157,7 +157,7 @@ class Synapse:
                     except:
                         command = None
 
-                # --- STEP 3: PROCESSING PHASE ---
+                #  STEP 3: PROCESSING PHASE 
 
                 if command:
                     print(f"🎤 Heard: {command}")
@@ -230,7 +230,7 @@ class Synapse:
     #         while hasattr(self.mouth, '_is_speaking') and self.mouth._is_speaking:
     #             time.sleep(0.1)
     #
-    #     # --- CASE 1: AUTO TRIGGER (Unknown Face Detected) ---
+    #     #  CASE 1: AUTO TRIGGER (Unknown Face Detected) 
     #     # Sirf tab chalega jab auto_trigger True ho aur Agent ne naam na diya ho
     #     if auto_trigger and not final_name:
     #         self.mouth.speak("I see someone new. Do you want me to remember them?")
@@ -255,7 +255,7 @@ class Synapse:
     #             self.mouth.speak("No response. Ignoring for now.")
     #             return
     #
-    #     # --- CASE 2: NAME GATHERING (Only if Agent/Auto didn't give a name) ---
+    #     #  CASE 2: NAME GATHERING (Only if Agent/Auto didn't give a name) 
     #     if not final_name:
     #         self.mouth.speak("Okay, tell me their name.")
     #         wait_for_sarah()
@@ -305,7 +305,7 @@ class Synapse:
     #         self.mouth.speak("I am struggling to hear. Let's try later.")
     #         return
     #
-    #     # --- STEP 3: EXISTING USER CHECK ---
+    #     #  STEP 3: EXISTING USER CHECK 
     #     # Vision engine check: Kya ye naam pehle se DB me hai?
     #     existing_info = self.vision.check_person_exists(final_name)
     #
@@ -340,7 +340,7 @@ class Synapse:
     #
     #         return  # Exit, no photo needed for update
     #
-    #     # --- STEP 4: MANDATORY INFO (Only if info is missing) ---
+    #     #  STEP 4: MANDATORY INFO (Only if info is missing) 
     #     if len(final_info) < 5:
     #         self.mouth.speak(f"Got it, {final_name}. Now, tell me, who is he? What do you want me to remember?")
     #         wait_for_sarah()
@@ -353,7 +353,7 @@ class Synapse:
     #             self.mouth.speak("Okay, I'll just remember him as a friend.")
     #             wait_for_sarah()
     #
-    #     # --- STEP 5: VISION REGISTRATION (Photo Session) ---
+    #     #  STEP 5: VISION REGISTRATION (Photo Session) 
     #     self.mouth.speak(f"Registering {final_name}. Please look at the camera.")
     #     wait_for_sarah()
     #
