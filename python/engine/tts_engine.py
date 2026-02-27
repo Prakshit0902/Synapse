@@ -3,14 +3,15 @@ import pygame
 import io
 import soundfile as sf
 from kokoro_onnx import Kokoro
+import socket
 import os
 import urllib.request
 import time
 import numpy as np
-import queue  #  Queue for streaming
-import re  #  Sentence detection
+import queue
+import re
 
-#  MONKEY PATCH (Standard Fix)
+# MONKEY PATCH (Standard Fix)
 if not hasattr(np, "original_load"):
     np.original_load = np.load
 
@@ -22,6 +23,7 @@ def smart_load(*args, **kwargs):
 
 
 np.load = smart_load
+
 
 class TTS_Engine:
     _is_speaking = False
@@ -38,9 +40,8 @@ class TTS_Engine:
         if TTS_Engine._kokoro is None:
             print("Loading Kokoro ONNX on CPU...")
             try:
-                # Standard Opset 20 Model
                 TTS_Engine._kokoro = Kokoro("kokoro-v0_19.onnx", "voices.bin")
-                print("Kokoro Loaded Successfully (Opset 20 Supported). 🟢")
+                print("Kokoro Loaded Successfully. 🟢")
             except Exception as e:
                 print(f"CRITICAL ERROR: {e}")
 
@@ -50,7 +51,6 @@ class TTS_Engine:
     def _ensure_models_exist(self):
         files = ["kokoro-v0_19.onnx", "voices.bin"]
         base_url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/"
-
         for file in files:
             if not os.path.exists(file):
                 print(f"Downloading {file}...")
@@ -68,41 +68,9 @@ class TTS_Engine:
             pygame.mixer.music.stop()
             pygame.mixer.music.unload()
 
-    # NEW STREAMING FUNCTION
-    def speak_stream(self, text_generator):
-        """
-        Streaming Mode: LLM se chunks lekar turant bolna shuru karta hai.
-        Latnecy: ~1s
-        """
-        if TTS_Engine._kokoro is None:
-            print("❌ Kokoro not loaded.")
-            return
-
-        TTS_Engine.stop()
-        TTS_Engine._stop_event.clear()
-        TTS_Engine._is_speaking = True
-
-        # Audio Queue (Generator -> Queue -> Player)
-        audio_queue = queue.Queue()
-
-        # Thread 1: Text Process & Generate Audio
-        gen_thread = threading.Thread(
-            target=self._stream_generator,
-            args=(text_generator, audio_queue)
-        )
-
-        # Thread 2: Play Audio from Queue
-        play_thread = threading.Thread(
-            target=self._stream_player,
-            args=(audio_queue,)
-        )
-
-        gen_thread.start()
-        play_thread.start()
-
-    def _stream_generator(self, text_generator, audio_queue):
+    #  GENERATORS
+    def _stream_generator(self, text_generator, audio_queue, target):
         sentence_buffer = ""
-        # Regex: Newline, Comma, Fullstop etc.
         sentence_endings = re.compile(r'(?<=[.?!])\s|\n|[,]')
 
         try:
@@ -110,7 +78,6 @@ class TTS_Engine:
                 if TTS_Engine._stop_event.is_set(): break
 
                 sentence_buffer += chunk
-
                 parts = sentence_endings.split(sentence_buffer)
 
                 if len(parts) > 1:
@@ -119,15 +86,21 @@ class TTS_Engine:
 
                     for sentence in to_process:
                         if len(sentence.strip()) > 1:
-                            audio_data = self._generate_audio_bytes(sentence)
+                            if target == "local":
+                                audio_data = self._generate_audio_bytes(sentence)
+                            else:
+                                audio_data = self._generate_audio_bytes_for_rpi(sentence)
+
                             if audio_data:
-                                # ✅ CHANGE: Audio ke saath Text bhi bhejo (Tuple)
                                 audio_queue.put((audio_data, sentence.strip()))
 
             if sentence_buffer.strip():
-                audio_data = self._generate_audio_bytes(sentence_buffer)
+                if target == "local":
+                    audio_data = self._generate_audio_bytes(sentence_buffer)
+                else:
+                    audio_data = self._generate_audio_bytes_for_rpi(sentence_buffer)
+
                 if audio_data:
-                    # ✅ CHANGE: Last chunk
                     audio_queue.put((audio_data, sentence_buffer.strip()))
 
         except Exception as e:
@@ -135,18 +108,10 @@ class TTS_Engine:
         finally:
             audio_queue.put(None)
 
-
     def _generate_audio_bytes(self, text):
-        """Helper: Text -> WAV Bytes"""
+        """LOCAL (PC): Text -> WAV Bytes"""
         try:
-            # Generate Audio (Fastest Settings)
-            samples, sample_rate = TTS_Engine._kokoro.create(
-                text,
-                voice=self.english_voice,
-                speed=1.0,
-                lang="en-us"
-            )
-
+            samples, sample_rate = TTS_Engine._kokoro.create(text, voice=self.english_voice, speed=1.0, lang="en-us")
             audio_buffer = io.BytesIO()
             sf.write(audio_buffer, samples, sample_rate, format='WAV')
             audio_buffer.seek(0)
@@ -155,38 +120,35 @@ class TTS_Engine:
             print(f"Gen Error: {e}")
             return None
 
+    def _generate_audio_bytes_for_rpi(self, text):
+        """EDGE (C++): Text -> Raw Float32 Bytes"""
+        try:
+            samples, sample_rate = TTS_Engine._kokoro.create(text, voice=self.english_voice, speed=1.0, lang="en-us")
+            raw_float32_bytes = np.array(samples, dtype=np.float32).tobytes()
+            return raw_float32_bytes
+        except Exception as e:
+            print(f"Gen Error: {e}")
+            return None
+
+    # PLAYERS
     def _stream_player(self, audio_queue):
-        """Queue se audio nikal kar play karta hai aur text print karta hai"""
+        """LOCAL (PC): Plays audio using Pygame"""
         first_chunk = True
         start_time = time.perf_counter()
-
         while True:
             if TTS_Engine._stop_event.is_set(): break
-
-            # Queue se packet nikalo
             packet = audio_queue.get()
-
-            if packet is None:  # End of stream
-                break
-
-            # Packet unpack karo (Audio + Text)
+            if packet is None: break
             audio_data, text_segment = packet
 
-            # Latency calculate karo (sirf pehle chunk ke liye meaningful hai, par har baar dikha sakte ho)
-            current_latency = (time.perf_counter() - start_time) * 1000
-
             if first_chunk:
-                print(f"🚀 Streaming Started! (First Byte: {current_latency:.0f}ms)")
+                print(f"🚀 Streaming Started! (First Byte: {(time.perf_counter() - start_time) * 1000:.0f}ms)")
                 first_chunk = False
 
-            # Play Audio
             try:
-                # 🗣️ PRINT TEXT SYNCED WITH AUDIO
                 print(f"🤖 Sarah: '{text_segment}'")
-
                 pygame.mixer.music.load(audio_data)
                 pygame.mixer.music.play()
-
                 while pygame.mixer.music.get_busy():
                     if TTS_Engine._stop_event.is_set():
                         pygame.mixer.music.stop()
@@ -194,14 +156,64 @@ class TTS_Engine:
                     time.sleep(0.05)
             except Exception as e:
                 print(f"Playback Error: {e}")
-
         TTS_Engine._is_speaking = False
 
-    # --- OLD SIMPLE SPEAK (Backward Compatibility) ---
-    def speak(self, text):
-        # Ise use karo agar text chhota hai (Not streaming)
-        # Main logic wahi hai bas generator bana ke stream ko pass kar do
-        def simple_gen():
-            yield text
+    def _stream_player_for_rpi(self, audio_queue):
+        """EDGE (C++): Sends raw bytes to C++ TCP Socket"""
+        first_chunk = True
+        start_time = time.perf_counter()
+        TARGET_IP = '127.0.0.1'
+        TARGET_PORT = 5000
 
-        self.speak_stream(simple_gen())
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((TARGET_IP, TARGET_PORT))
+            print("🔗 Connected to C++ Audio Server!")
+        except Exception as e:
+            print(f"❌ Failed to connect to C++ Audio Server: {e}")
+            return
+
+        while True:
+            if TTS_Engine._stop_event.is_set(): break
+            packet = audio_queue.get()
+            if packet is None: break
+            raw_audio_bytes, text_segment = packet
+
+            if first_chunk:
+                print(f"🚀 Streaming to C++ Started! (First Byte: {(time.perf_counter() - start_time) * 1000:.0f}ms)")
+                first_chunk = False
+
+            try:
+                print(f"🤖 Sending to C++: '{text_segment}'")
+                s.sendall(raw_audio_bytes)
+            except Exception as e:
+                print(f"Network Send Error: {e}")
+                break
+
+        s.close()
+        TTS_Engine._is_speaking = False
+
+
+    def speak_stream(self, text_generator, target="local"):
+        if TTS_Engine._kokoro is None: return
+        TTS_Engine.stop()
+        TTS_Engine._stop_event.clear()
+        TTS_Engine._is_speaking = True
+
+        audio_queue = queue.Queue()
+        gen_thread = threading.Thread(target=self._stream_generator, args=(text_generator, audio_queue, target))
+        player_func = self._stream_player if target == "local" else self._stream_player_for_rpi
+        play_thread = threading.Thread(target=player_func, args=(audio_queue,))
+
+        gen_thread.start()
+        play_thread.start()
+
+    def speak(self, text):
+        def simple_gen(): yield text
+
+        self.speak_stream(simple_gen(), target="local")
+
+    def speak_for_rpi(self, text):
+        def simple_gen(): yield text
+
+        self.speak_stream(simple_gen(), target="rpi")
