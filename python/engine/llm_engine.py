@@ -5,7 +5,7 @@ import colorama
 import ollama
 import threading
 
-from python.chat_manager import ChatManager
+from python.engine.chat_manager import ChatManager
 from python.engine.dynamic_db_engine import DynamicDBEngine
 from python.engine.identity_manager import IdentityManager
 from python.engine.vision_pro import Vision_Pro
@@ -16,7 +16,7 @@ from python.engine.weather_system import Wheather_Engine
 
 class LLM_Engine:
     def __init__(self, music_engine=None, vision_engine=None):
-        # Sarah System Prompt (Strict Language Enforcer)
+        # Naina System Prompt (Strict Language Enforcer)
         print(colorama.Fore.YELLOW + "[STT] Initializing Whisper Model...")
 
         # Use provided music engine
@@ -40,7 +40,7 @@ class LLM_Engine:
         self.current_user = "Unknown"
 
         system_instructions = """
-                You are Sarah, a witty conversational AI. 
+                You are Naina, a witty conversational AI. 
 
                 STRICT RULES:
                 1. LANGUAGE: Speak ONLY in English or Hindi (Hinglish).
@@ -107,7 +107,7 @@ class LLM_Engine:
             """
 
         system_context = f"""
-            You are Sarah. Your Creator is 'Priyadarshan'.  
+            You are Naina. Your Creator is 'Priyadarshan, Prerak, Akit'.  
             {vision_info_str}
 
             TOOL USAGE GUIDELINES (STRICT):
@@ -161,7 +161,7 @@ class LLM_Engine:
                         extracted_name = json_info["name"].strip()
                         extracted_info = json_info.get("info", "")
 
-                        forbidden_names = ["sarah", "i", "me", "myself", "person", "someone", "unknown", "nobody",
+                        forbidden_names = ["Naina", "i", "me", "myself", "person", "someone", "unknown", "nobody",
                                            "user"]
                         if extracted_name.lower() in forbidden_names or len(extracted_name) < 3:
                             print(f"🚫 Blocked Garbage Add Request: {extracted_name}")
@@ -298,7 +298,7 @@ class LLM_Engine:
 
     def build_response(self, query, data):
         system_prompt = """
-            You are Sarah. Convert the provided data into a natural, conversational response for the user.
+            You are Naina. Convert the provided data into a natural, conversational response for the user.
             Keep it concise.
             """
         user_message = f"User Query: {query}\nData Found: {data}\nResponse:"

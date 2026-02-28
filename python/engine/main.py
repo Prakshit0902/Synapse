@@ -96,7 +96,7 @@ class Synapse:
                         # 3. Key Matching
                         max_score = 0.0
                         for key, score in prediction.items():
-                            if "jarvis" in key.lower() or "sarah" in key.lower():
+                            if "jarvis" in key.lower() or "naina" in key.lower():
                                 max_score = score
                                 break
 

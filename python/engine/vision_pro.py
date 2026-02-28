@@ -7,7 +7,7 @@ from insightface.app import FaceAnalysis
 import pickle
 import json
 import colorama
-import os  # <--- Added Import
+import os  # < Added Import
 from thefuzz import process
 
 
@@ -29,7 +29,7 @@ class Vision_Pro:
 
         self.setup_db()
 
-        # --- 🚀 NEW FEATURE: Auto-Import from Folder ---
+        #  🚀 NEW FEATURE: Auto-Import from Folder 
         self.import_from_folder()
 
 
@@ -317,7 +317,7 @@ class Vision_Pro:
 if __name__ == "__main__":
     v = Vision_Pro()
 
-    print("\n--- TEST MODE: Press 'q' to quit ---")
+    print("\n TEST MODE: Press 'q' to quit ")
     print("1. If you added photos in 'known_faces', they are imported now.")
     print("2. The camera will now try to recognize you.")
 
