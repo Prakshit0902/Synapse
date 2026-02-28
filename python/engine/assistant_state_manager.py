@@ -1,5 +1,9 @@
 import time
 
+"""
+This class is for checking what Synapse is doing... Means its state 
+Like Idle, Speaking,Listening.
+"""
 
 class AssistantState:
     def __init__(self, music_engine=None):
@@ -10,7 +14,8 @@ class AssistantState:
 
     def set_speaking(self, status):
         """
-        Update speaking status.
+        Update / Set speaking status.
+
         If speaking = True, lower the music volume.
         """
         self.is_speaking = status
