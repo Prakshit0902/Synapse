@@ -3,6 +3,10 @@
 #include "NetworkHandler.h"
 #include <cstring>
 
+extern std::atomic<bool> is_active;
+extern std::atomic<bool> is_pc_speaking;
+extern std::chrono::steady_clock::time_point last_activity_time;
+
 #define BUFFER_SIZE 4096
 
 // Helper Macros for Cross-Platform
@@ -82,7 +86,6 @@ bool AudioHandler::initPlayer() {
     isPlayerInitialized = true;
     return true;
 }
-
 void AudioHandler::startListening() {
     if (!isPlayerInitialized) return;
 
@@ -116,18 +119,24 @@ void AudioHandler::startListening() {
         return;
     }
 
+    
     while (true) {
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen)) == INVALID_SOCKET) {
             continue;
         }
 
         char buffer[BUFFER_SIZE];
-        int bytesRead; // int on Windows for recv
+        int bytesRead;
 
-        // Using READ_SOCKET macro
+        // PC se aane wala data read kar rahe hain
         while ((bytesRead = READ_SOCKET(new_socket, buffer, BUFFER_SIZE)) > 0) {
+            is_pc_speaking = true; // System ko bata ki PC bol raha hai
+            last_activity_time = std::chrono::steady_clock::now(); // Timer reset
+
             SDL_QueueAudio(audioDevice, buffer, bytesRead);
         }
+
+        is_pc_speaking = false; // Jab audio aana band ho jaye
         CLOSE_SOCKET(new_socket);
     }
 }
