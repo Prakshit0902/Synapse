@@ -18,6 +18,7 @@ using namespace CLFML::LOWWI;
 std::atomic<bool> is_active(false);
 std::chrono::steady_clock::time_point last_activity_time;
 
+
 int main(int argc, char* argv[]) {
     std::cout << "--- TRINETRA VISION: SYSTEM STARTUP ---" << std::endl;
 
@@ -67,7 +68,7 @@ int main(int argc, char* argv[]) {
         std::cout << "\n[EVENT] Wake Word Detected! | System ACTIVATE" << std::endl;
         is_active = true;
 
-        // 🆕 NEW: Reset the timer
+        //  NEW: Reset the timer
         last_activity_time = std::chrono::steady_clock::now();
         };
     ww_runtime.add_wakeword(ww);
@@ -91,7 +92,7 @@ int main(int argc, char* argv[]) {
         }
 
         if (is_active) {
-            // --- TIMER CHECK ---
+            //  TIMER CHECK 
             auto now = std::chrono::steady_clock::now();
             // Calculate kitne seconds beet gaye
             auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_activity_time).count();
