@@ -1,5 +1,6 @@
 # C++ / Visual Studio Junk 
 .vs/
+.idea/
 out/
 build/
 x64/
