@@ -5,9 +5,7 @@ project(Trinetra_Vision)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# --------------------------------------------------------
 # 1. SETUP SOURCES & INCLUDES
-# --------------------------------------------------------
 include_directories(include)
 
 # Apni saari source files yahan add karo
