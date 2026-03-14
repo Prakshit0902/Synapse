@@ -4,9 +4,9 @@ import pygame
 from python.engine.assistant_state_manager import AssistantState
 from python.engine.music_engine import MusicEngine
 from python.engine.weather_system import Wheather_Engine
-from stt_engine import STT_Engine
-from tts_engine import TTS_Engine
-from llm_engine import LLM_Engine
+from python.engine.stt_engine import STT_Engine
+from python.engine.tts_engine import TTS_Engine
+from python.engine.llm_engine import LLM_Engine
 
 import os
 
@@ -15,7 +15,7 @@ import numpy as np
 
 from openwakeword import Model
 
-from vision_pro import Vision_Pro
+from python.engine.vision_pro import Vision_Pro
 import colorama
 import time
 
