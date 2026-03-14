@@ -2,10 +2,9 @@
 #include "AudioHandler.h"
 #include "NetworkHandler.h"
 #include <cstring>
+#include <chrono>
 
-extern std::atomic<bool> is_active;
-extern std::atomic<bool> is_pc_speaking;
-extern std::chrono::steady_clock::time_point last_activity_time;
+// ❌ is_active, is_pc_speaking, last_activity_time hata diye (ab zaroorat nahi)
 
 #define BUFFER_SIZE 4096
 
@@ -18,52 +17,57 @@ extern std::chrono::steady_clock::time_point last_activity_time;
 #define READ_SOCKET(s, buf, len) read(s, buf, len)
 #endif
 
-//  [data_callback same as before] 
 void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
-    // (Pichla code same rahega)
     AudioContext* ctx = (AudioContext*)pDevice->pUserData;
-    if (ctx == NULL || ctx->net == NULL || ctx->lowwi == NULL) return;
-    const float* inputFloats = (const float*)pInput;
-    std::vector<float> audio_chunk(inputFloats, inputFloats + frameCount);
-    ctx->lowwi->run(audio_chunk);
-    if (ctx->is_active && *(ctx->is_active)) {
-        size_t dataSize = frameCount * 1 * sizeof(float);
-        ctx->net->sendAudioChunk(pInput, dataSize);
-    }
+
+    // Agar network nahi hai toh return karo
+    if (ctx == NULL || ctx->net == NULL) return;
+
+
+    size_t dataSize = frameCount * 1 * sizeof(float);
+    ctx->net->sendAudioChunk(pInput, dataSize);
 }
 
-// ... [Constructors same as before] ...
+
 AudioHandler::AudioHandler() : port(0), isRecorderInitialized(false), isPlayerInitialized(false), isRecording(false), server_fd(INVALID_SOCKET), audioDevice(0) {}
 AudioHandler::AudioHandler(int p) : port(p), isRecorderInitialized(false), isPlayerInitialized(false), isRecording(false), server_fd(INVALID_SOCKET), audioDevice(0) {}
 AudioHandler::~AudioHandler() { cleanup(); }
 
-// ... [Recorder Functions same as before] ...
-bool AudioHandler::initRecorder(NetworkHandler* network, CLFML::LOWWI::Lowwi* lowwi_inst, std::atomic<bool>* active_flag) {
-    // (Paste previous recorder code here)
+
+bool AudioHandler::initRecorder(NetworkHandler* network) {
     this->contextPacket.net = network;
-    this->contextPacket.lowwi = lowwi_inst;
-    this->contextPacket.is_active = active_flag;
+
+
     ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
     deviceConfig.capture.format = ma_format_f32;
     deviceConfig.capture.channels = 1;
     deviceConfig.sampleRate = 16000;
     deviceConfig.dataCallback = data_callback;
     deviceConfig.pUserData = &this->contextPacket;
+
     if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) return false;
+
     isRecorderInitialized = true;
     return true;
 }
-bool AudioHandler::startRecording() { if (!isRecorderInitialized) return false; return ma_device_start(&device) == MA_SUCCESS; }
-void AudioHandler::stopRecording() { if (isRecorderInitialized) ma_device_stop(&device); }
 
-// --- PLAYER IMPLEMENTATION (Fixed for Windows) ---
+bool AudioHandler::startRecording() {
+    if (!isRecorderInitialized) return false;
+    return ma_device_start(&device) == MA_SUCCESS;
+}
+
+void AudioHandler::stopRecording() {
+    if (isRecorderInitialized) ma_device_stop(&device);
+}
+
+
+// --- PLAYER IMPLEMENTATION (Same as before) ---
 bool AudioHandler::initPlayer() {
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
         std::cerr << "SDL Error: " << SDL_GetError() << std::endl;
         return false;
     }
 
-    // Windows Sockets Init
 #ifdef _WIN32
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
@@ -86,6 +90,7 @@ bool AudioHandler::initPlayer() {
     isPlayerInitialized = true;
     return true;
 }
+
 void AudioHandler::startListening() {
     if (!isPlayerInitialized) return;
 
@@ -98,7 +103,6 @@ void AudioHandler::startListening() {
         return;
     }
 
-    // Windows pe SO_REUSEPORT nahi hota, sirf SO_REUSEADDR
 #ifdef _WIN32
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
 #else
@@ -119,7 +123,6 @@ void AudioHandler::startListening() {
         return;
     }
 
-    
     while (true) {
         if ((new_socket = accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen)) == INVALID_SOCKET) {
             continue;
@@ -130,13 +133,10 @@ void AudioHandler::startListening() {
 
         // PC se aane wala data read kar rahe hain
         while ((bytesRead = READ_SOCKET(new_socket, buffer, BUFFER_SIZE)) > 0) {
-            is_pc_speaking = true; // System ko bata ki PC bol raha hai
-            last_activity_time = std::chrono::steady_clock::now(); // Timer reset
-
+            
             SDL_QueueAudio(audioDevice, buffer, bytesRead);
         }
 
-        is_pc_speaking = false; // Jab audio aana band ho jaye
         CLOSE_SOCKET(new_socket);
     }
 }
