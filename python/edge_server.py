@@ -52,19 +52,19 @@ class EdgeBridge:
                 print("[System] Music starting - Edge mode")
                 self.app.manual_music_mode = True
             else:
-                self.app.mouth.speak_for_rpi(agentic_response)  # 🟢 Send to C++
+                self.app.mouth.speak_for_rpi(agentic_response)  # Send to C++
             return
 
         # 3. Fallback
         print(f"💬 Falling back to Chat: {command}")
         ai_response = self.app.brain.chat(command)
-        self.app.mouth.speak_for_rpi(ai_response)  # 🟢 Send to C++
+        self.app.mouth.speak_for_rpi(ai_response)  # Send to C++
 
     def audio_listener(self):
         context = zmq.Context()
         socket_audio = context.socket(zmq.SUB)
-        socket_audio.connect(f"tcp://192.168.52:{self.AUDIO_PORT}")
-        socket_audio.setsockopt_string(zmq.SUBSCRIBE, '')
+        socket_audio.subscribe(b"")
+        socket_audio.connect(f"tcp://192.168.1.52:{self.AUDIO_PORT}")
 
         print(f"👂 Edge Audio Listening on {self.AUDIO_PORT}...")
 
@@ -76,7 +76,10 @@ class EdgeBridge:
             try:
                 packet = socket_audio.recv()
                 chunk = np.frombuffer(packet, dtype=np.float32)
+
                 volume = np.sqrt(np.mean(chunk ** 2))
+                print(f"🔊 Debug Volume: {volume:.5f}", end="\r")  # YE LINE DAAL
+
 
                 if volume > self.SILENCE_THRESHOLD:
                     if not is_speaking:
@@ -109,8 +112,8 @@ class EdgeBridge:
     def video_listener(self):
         context = zmq.Context()
         socket_video = context.socket(zmq.SUB)
+        socket_video.subscribe(b"")
         socket_video.connect(f"tcp://192.168.1.52:{self.VIDEO_PORT}")
-        socket_video.setsockopt_string(zmq.SUBSCRIBE, '')
         print(f"📷 Edge Video Receiver started on {self.VIDEO_PORT}... Waiting for Pi...")
 
         first_frame = True  # Tracker laga diya
