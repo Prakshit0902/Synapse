@@ -13,8 +13,6 @@ class EdgeBridge:
     def __init__(self):
         print("🌐 Starting Trinetra Edge Bridge...")
 
-        # 🟢 THE MAGIC: Initialize the entire Brain once!
-        # Ye teri main.py ka object hai, jisme Whisper, LLM, TTS sab loaded hain.
         self.app = Synapse()
 
         # Networking Constants
@@ -65,7 +63,7 @@ class EdgeBridge:
     def audio_listener(self):
         context = zmq.Context()
         socket_audio = context.socket(zmq.SUB)
-        socket_audio.connect(f"tcp://localhost:{self.AUDIO_PORT}")
+        socket_audio.connect(f"tcp://192.168.52:{self.AUDIO_PORT}")
         socket_audio.setsockopt_string(zmq.SUBSCRIBE, '')
 
         print(f"👂 Edge Audio Listening on {self.AUDIO_PORT}...")
@@ -111,9 +109,11 @@ class EdgeBridge:
     def video_listener(self):
         context = zmq.Context()
         socket_video = context.socket(zmq.SUB)
-        socket_video.connect(f"tcp://localhost:{self.VIDEO_PORT}")
+        socket_video.connect(f"tcp://192.168.1.52:{self.VIDEO_PORT}")
         socket_video.setsockopt_string(zmq.SUBSCRIBE, '')
-        print(f"📷 Edge Video Receiver started on {self.VIDEO_PORT}...")
+        print(f"📷 Edge Video Receiver started on {self.VIDEO_PORT}... Waiting for Pi...")
+
+        first_frame = True  # Tracker laga diya
 
         while True:
             try:
@@ -122,16 +122,21 @@ class EdgeBridge:
                 frame = cv.imdecode(np_arr, cv.IMREAD_COLOR)
 
                 if frame is not None:
-                    # Yahan tum frame ko seedha vision model ko de sakte ho
-                    # self.app.vision.process_frame(frame)
+                    if first_frame:
+                        print("\nSUCCESS: First Video Frame Received from Pi! Connection Active.")
+                        first_frame = False
+
                     cv.imshow("TRINETRA EDGE VISION", frame)
 
                 if cv.waitKey(1) == ord('q'):
                     break
+
             except zmq.Again:
+                # Ye normal hai jab tak naya frame nahi aata
                 pass
             except Exception as e:
-                pass
+                # Agar koi aur error hai toh ab chup nahi baithega
+                print(f"Video Receiver Error: {e}")
 
     def start(self):
         t_audio = threading.Thread(target=self.audio_listener)

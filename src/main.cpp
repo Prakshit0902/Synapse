@@ -55,17 +55,16 @@ int main(int argc, char* argv[]) {
     // 4. MAIN VIDEO LOOP (Lagatar Frames bhejega)
     std::cout << "[OK] Streaming Video continuously..." << std::endl;
     while (true) {
-        cv::Mat frame = ch.getFrame();
-        if (frame.empty()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            continue;
-        }
-
-        // Bina kisi wake-word check ke sidha frame bhejo
-        nh_video.sendFrame(frame);
-
-        
+    cv::Mat frame = ch.getFrame();
+    if (frame.empty()) {
+        std::cout << "[WARNING] Camera returning empty frames!" << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        continue;
     }
+
+    std::cout << "-> Sending Frame to PC..." << std::endl; // YE LINE DAAL
+    nh_video.sendFrame(frame);
+}
 
     // Cleanup
     recorder.stopRecording();
