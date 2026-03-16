@@ -15,7 +15,15 @@ int main(int argc, char* argv[]) {
 
     // 1. HARDWARE & NETWORK SETUP
     CameraHandler ch;
-    if (!ch.initCamera(0)) {
+    bool camerReady = false;
+    for (int i = 0; i < 5; i++) {
+        if (ch.initCamera(0)) {
+            cameraReady = true;
+            break;
+        }
+        std::cout << "[WARNING] Camera busy, retrying in 1s... (" << i + 1 << "/5)" << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    if (ch.initCamera(0)) {
         std::cerr << "[ERROR] Camera Initialization Failed!" << std::endl;
         return -1;
     }
