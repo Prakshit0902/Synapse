@@ -1,9 +1,9 @@
 import requests
 
-class WeatherAdvanced:
+class Wheather_Engine:
     def __init__(self):
         # -> OpenWeather se tempreature pta lagayenge
-        self.api_key = "YOUR_API_KEY"
+        self.api_key = "7c880ab8a64eddb3de89b7e500536d9c"
         self.base_url = "http://api.openweathermap.org/data/2.5/weather"
 
     def get_weather(self, city):
@@ -44,13 +44,21 @@ class WeatherAdvanced:
                 else:
                     print(f"☀️  Precipitation: No rain reported.")
                 print("-" * 30)
+                
+                # **ADD THIS RETURN STATEMENT:**
+                return f"Temperature: {temp}°C, Condition: {desc.title()}, Humidity: {humidity}%, Wind: {wind_speed} m/s"
+                
             else:
                 print(f"❌ Error: {data['message']}")
+                return f"Weather data not available for {city}. Error: {data['message']}"
+                
         except Exception as e:
             print(f"❌ Something went wrong: {e}")
+            return f"Failed to get weather data for {city}. Error: {e}"
 
 # -> User se input leke weather check karenge
 if __name__ == "__main__":
-    bot = WeatherAdvanced()
+    bot = Wheather_Engine()  # Fixed class name here too
     city = input("Enter City Name: ")
-    bot.get_weather(city)
+    result = bot.get_weather(city)
+    print(f"Returned: {result}")

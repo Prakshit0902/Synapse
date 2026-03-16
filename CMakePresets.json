@@ -1,0 +1,33 @@
+﻿{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "windows-base",
+      "displayName": "x64 Debug (Global vcpkg)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+      }
+    },
+    {
+      "name": "linux-remote",
+      "displayName": "Linux Debug (Raspberry Pi)",
+      "description": "Remote build on RPi",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "remoteMachineName": "raspberrypi.local",
+          "hostOS": [ "Linux" ],
+          "rsyncCommandArgs": "-t --delete --exclude=.venv --exclude=vcpkg_installed --exclude=__pycache__",
+          "remoteCopySourcesExclusionList": [ ".vs", ".git", "out", "build", ".venv", "vcpkg_installed" ]
+        }
+      }
+    }
+  ]
+}

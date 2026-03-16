@@ -42,5 +42,7 @@ void NetworkHandler::sendAudioChunk(const void* data, size_t size) {
 	zmq::message_t message(data, size);
 
 	// ZMQ socket se bhej do (Don't wait/block if possible)
-	socket.send(message, zmq::send_flags::none);
+//	socket.send(message, zmq::send_flags::none);
+	publisher.send(message, zmq::send_flags::none);
+
 }

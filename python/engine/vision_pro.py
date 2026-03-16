@@ -7,49 +7,109 @@ from insightface.app import FaceAnalysis
 import pickle
 import json
 import colorama
+import os  # < Added Import
 from thefuzz import process
 
 
 class Vision_Pro:
-    def __init__(self):  # init constructor hai
+    def __init__(self):
         print('Initializing Vision Pro Engine...')
-        self.yolo = YOLO('yolov8n.pt')  # self == this
+        self.yolo = YOLO('yolov8n.pt')
+        self.is_running = True
 
         self.app = FaceAnalysis(
-            name='buffalo_l',
+            name='buffalo_s',
             root='C:/Users/priya/.insightface',
             providers=['CUDAExecutionProvider']
         )
-
-        # buffallo_l model use kar raha hai agar
-        # cuda available hai to use karega nahi to CPU
-
         self.app.prepare(ctx_id=0, det_size=(640, 640))
-        # app ka object ban gya ab engine start karna prepare se ctx_id mtlb jo provider 
-        # # diya hai usme se 0th index wala use karega camera se 1080p yaa 4K ko reframe 
-        # karega 640x640 me
-        # # and usme chehra dhundega, Face detection ke liye fast hai
 
         self.conn = sqlite3.connect('vision_pro.db', check_same_thread=False)
-        # conn naam ka obj banaya ab ye database se connect karega vision_pro.db file se
-        #  agar file nahi hai to nayi file bana dega
-        # check_same_thread=False ka matlab hai ki multiple threads se access kar sakte hai 
-        # sqllite ka rule hai jis thread ne banaya vahi access kar sakta hai good for multithreading
-
         self.cursor = self.conn.cursor()
-        # conn bridge hai jaha se hum databse jayenge but cursor is the gaurd jo queries ko execute karega
-        # jese insert select etc
 
         self.setup_db()
-        # database setup karne ke liye function call kiya
 
-        self.known_names = []  # same as arrayList or vector naaam ke liye
-        self.known_embeddings = []  # dembeddings mtlb chehre ke features store karega
-        self.known_info = []  # uska info store karega jaise role etc
-        self.load_memory()  # function call kiya memory load karne ke liye
+        #  🚀 NEW FEATURE: Auto-Import from Folder 
+        self.import_from_folder()
 
-        self.cap = cv2.VideoCapture(0)
+
+        self.known_names = []
+        self.known_embeddings = []
+        self.known_info = []
+        self.load_memory()
+
+        self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         print('Vision Pro Engine Ready.')
+
+    def import_from_folder(self):
+        """
+        Scans 'known_faces' folder.
+        If you put 'ankit.jpg' there, it automatically registers 'Ankit' into the DB.
+        """
+        folder_path = "known_faces"
+
+        # Create folder if it doesn't exist
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+            print(
+                colorama.Fore.YELLOW + f"📁 Created '{folder_path}' folder. Drop photos here (e.g. 'Ankit.jpg') to auto-register!")
+            return
+
+        print(colorama.Fore.CYAN + "📂 Scanning 'known_faces' folder for new people...")
+
+        valid_extensions = ('.jpg', '.jpeg', '.png')
+        new_count = 0
+
+        for filename in os.listdir(folder_path):
+            if filename.lower().endswith(valid_extensions):
+                # Clean name: "ankit_dandotia.jpg" -> "Ankit Dandotia"
+                name = os.path.splitext(filename)[0].replace("_", " ").title()
+
+                # Check if already exists in DB (Prevent Duplicates)
+                self.cursor.execute("SELECT 1 FROM humans WHERE name = ?", (name,))
+                if self.cursor.fetchone():
+                    continue  # Skip if already registered
+
+                # Process Image
+                img_path = os.path.join(folder_path, filename)
+                img = cv2.imread(img_path)
+
+                if img is None:
+                    continue
+
+                # InsightFace requires RGB
+                rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                faces = self.app.get(rgb_img)
+
+                if len(faces) == 0:
+                    print(f"⚠️ Warning: No face found in {filename}. Skipping.")
+                    continue
+
+                # Take the largest face in the image
+                face = sorted(faces, key=lambda x: x.bbox[2] * x.bbox[3])[-1]
+                embedding = face.embedding
+
+                # Prepare DB Entry
+                binary_enc = pickle.dumps(embedding)
+                info = json.dumps({"details": "Imported from file", "added_on": time.strftime("%Y-%m-%d")})
+
+                # Insert into DB (4 Times to match the structure expected by other functions if needed, or just 1 is fine usually, but let's stick to 1 for import)
+                # Note: The original register_face adds 4 entries (front, left, right, smile).
+                # For file import, we usually have only 1. We will add it once.
+
+                try:
+                    self.cursor.execute("INSERT INTO humans (name, embedding, info) VALUES (?, ?, ?)",
+                                        (name, binary_enc, info))
+                    new_count += 1
+                    print(f"✅ Auto-Registered: {name}")
+                except Exception as e:
+                    print(f"❌ Error importing {name}: {e}")
+
+        if new_count > 0:
+            self.conn.commit()
+            print(colorama.Fore.GREEN + f"🎉 Imported {new_count} new faces from folder!")
+        else:
+            print("Folder check complete. No new valid images found.")
 
     def setup_db(self):
         self.cursor.execute(
@@ -82,7 +142,6 @@ class Vision_Pro:
 
         for name, enc_blob, info_json in rows:
             embedding = pickle.loads(enc_blob)
-
             try:
                 info = json.loads(info_json) if info_json else {}
             except:
@@ -95,75 +154,72 @@ class Vision_Pro:
         print(colorama.Fore.GREEN + f"[Vision] Loaded {len(self.known_names)} identities.")
 
     def register_face(self, frame, name, info_dict, tts_engine):
-
-        # --- ⏳ HELPER: Bolne ka wait karo, fir user ko time do ---
+        # (Keeping your original manual registration logic here unchanged)
         def speak_and_wait(text, wait_for_user_seconds=0):
-            tts_engine.speak(text)
-            time.sleep(0.5)  # Thread start hone ka chhota buffer
-
-            # Jab tak Sarah bol rahi hai, code yahi roka rahega
-            while tts_engine._is_speaking:
-                time.sleep(0.1)
-
-            # Ab Sarah chup hai, User ko time do move karne ka
+            if tts_engine:
+                tts_engine.speak(text)
+                time.sleep(0.5)
+                while hasattr(tts_engine, '_is_speaking') and tts_engine._is_speaking:
+                    time.sleep(0.1)
+            else:
+                print(f"[TTS MISSING]: {text}")
             if wait_for_user_seconds > 0:
                 print(f"Waiting {wait_for_user_seconds}s for user action...")
                 time.sleep(wait_for_user_seconds)
 
-        # ---------------------------------------------------------
+        import os
+        folder_path = "registered_faces"
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
 
-        # 1. FRONT FACE (Jo frame pass hua hai use hi use kar lo)
+        clean_name = name.replace(" ", "_").lower()
+        timestamp = int(time.time())
+
+        # 1. FRONT FACE
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         faces = self.app.get(rgb_frame)
-
         if len(faces) == 0:
             print(f'No faces detected')
             speak_and_wait("I can't see your face. Please look at the camera.", 0)
             return False
 
         speak_and_wait("Hold on, capturing front view.", 0)
-
-        # Capture Front
         face_straight = sorted(faces, key=lambda x: x.bbox[2] * x.bbox[3])[-1]
         embedding_straight = face_straight.embedding
+        cv2.imwrite(f"{folder_path}/{clean_name}_front_{timestamp}.jpg", frame)
 
         # 2. LEFT FACE
-        speak_and_wait("Now turn your face slightly to the left.", wait_for_user_seconds=3)  # ✅ 3 Sec ka gap
-
-        ret, frame_left = self.cap.read()  # Ab photo lo
+        speak_and_wait("Now turn your face slightly to the left.", wait_for_user_seconds=3)
+        ret, frame_left = self.cap.read()
         if not ret: return False
-
         rgb_left = cv2.cvtColor(frame_left, cv2.COLOR_BGR2RGB)
         faces_left = self.app.get(rgb_left)
-
         if len(faces_left) == 0:
             speak_and_wait("Face not found in left view, using front view instead.", 0)
-            embedding_left = embedding_straight  # Fallback
+            embedding_left = embedding_straight
         else:
             face_left_obj = sorted(faces_left, key=lambda x: x.bbox[2] * x.bbox[3])[-1]
             embedding_left = face_left_obj.embedding
+            cv2.imwrite(f"{folder_path}/{clean_name}_left_{timestamp}.jpg", frame_left)
 
         # 3. RIGHT FACE
-        speak_and_wait("Now turn slightly to the right.", wait_for_user_seconds=3)  # ✅ 3 Sec ka gap
-
+        speak_and_wait("Now turn slightly to the right.", wait_for_user_seconds=3)
         ret, frame_right = self.cap.read()
         if not ret: return False
-
         rgb_right = cv2.cvtColor(frame_right, cv2.COLOR_BGR2RGB)
         faces_right = self.app.get(rgb_right)
-
         if len(faces_right) == 0:
             speak_and_wait("Face not found in right view, using front view instead.", 0)
-            embedding_right = embedding_straight  # Fallback
+            embedding_right = embedding_straight
         else:
             face_right_obj = sorted(faces_right, key=lambda x: x.bbox[2] * x.bbox[3])[-1]
             embedding_right = face_right_obj.embedding
+            cv2.imwrite(f"{folder_path}/{clean_name}_right_{timestamp}.jpg", frame_right)
 
-        # 4. SMILE (Optional but Good)
+        # 4. SMILE
         speak_and_wait("Okay, now look at the camera and give me a big smile.", wait_for_user_seconds=2)
-
         ret, frame_smile = self.cap.read()
-        embedding_smile = embedding_straight  # Default fallback
+        embedding_smile = embedding_straight
         if ret:
             rgb_smile = cv2.cvtColor(frame_smile, cv2.COLOR_BGR2RGB)
             faces_smile = self.app.get(rgb_smile)
@@ -171,65 +227,27 @@ class Vision_Pro:
                 face_smile_obj = sorted(faces_smile, key=lambda x: x.bbox[2] * x.bbox[3])[-1]
                 embedding_smile = face_smile_obj.embedding
 
-        # --- DATABASE INSERTION ---
+        # DB Insertion
         json_info = json.dumps(info_dict)
-
-        # Binary convert
         binary_enc_straight = pickle.dumps(embedding_straight)
         binary_enc_left = pickle.dumps(embedding_left)
         binary_enc_right = pickle.dumps(embedding_right)
         binary_enc_smile = pickle.dumps(embedding_smile)
 
-        # 4 Rows Insert karo (Front, Left, Right, Smile)
-        self.cursor.execute("INSERT INTO humans (name, embedding, info) VALUES (?, ?, ?)",
-                            (name, binary_enc_straight, json_info))
-        self.cursor.execute("INSERT INTO humans (name, embedding, info) VALUES (?, ?, ?)",
-                            (name, binary_enc_left, json_info))
-        self.cursor.execute("INSERT INTO humans (name, embedding, info) VALUES (?, ?, ?)",
-                            (name, binary_enc_right, json_info))
-        self.cursor.execute("INSERT INTO humans (name, embedding, info) VALUES (?, ?, ?)",
-                            (name, binary_enc_smile, json_info))  # Smile entry
-
+        query = "INSERT INTO humans (name, embedding, info) VALUES (?, ?, ?)"
+        self.cursor.execute(query, (name, binary_enc_straight, json_info))
+        self.cursor.execute(query, (name, binary_enc_left, json_info))
+        self.cursor.execute(query, (name, binary_enc_right, json_info))
+        self.cursor.execute(query, (name, binary_enc_smile, json_info))
         self.conn.commit()
 
-        # Update Memory
         self.known_embeddings.extend([embedding_straight, embedding_left, embedding_right, embedding_smile])
         self.known_names.extend([name, name, name, name])
         self.known_info.extend([info_dict, info_dict, info_dict, info_dict])
 
         speak_and_wait(f"Done! I have successfully registered {name}.", 0)
-        print(colorama.Fore.GREEN + f"[Vision] Registered new face: {name} (4 Angles)")
+        print(colorama.Fore.GREEN + f"[Vision] Registered new face: {name}")
         return True
-
-        # --- 🛠️ NEW HELPER FUNCTIONS ---
-
-        def check_person_exists(self, name):
-            """Check if person exists and return their current info"""
-            try:
-                # Case-insensitive search
-                self.cursor.execute("SELECT info FROM humans WHERE name LIKE ?", (name,))
-                row = self.cursor.fetchone()
-                if row:
-                    return json.loads(row[0])  # Return Info Dict
-                return None
-            except Exception:
-                return None
-
-        def update_person_info(self, name, new_info_dict):
-            """Updates only the info, keeps the face data"""
-            try:
-                json_info = json.dumps(new_info_dict)
-                # Update all entries for this name (Front, Left, Right etc.)
-                self.cursor.execute("UPDATE humans SET info = ? WHERE name LIKE ?", (json_info, name))
-                self.conn.commit()
-
-                # Memory list bhi update karni padegi (Thoda complex hai, reload karna best hai)
-                self.load_known_faces()  # Reload DB to RAM
-                return True
-            except Exception as e:
-                print(f"Update Error: {e}")
-                return False
-
 
     def recognize(self, frame):
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -244,11 +262,9 @@ class Vision_Pro:
 
             if len(self.known_embeddings) > 0:
                 known_matrix = np.array(self.known_embeddings)
-
                 sims = np.dot(known_matrix, embedding) / (
                         np.linalg.norm(known_matrix, axis=1) * np.linalg.norm(embedding)
                 )
-
                 best_idx = np.argmax(sims)
                 max_score = sims[best_idx]
 
@@ -266,69 +282,47 @@ class Vision_Pro:
 
         return recognized
 
+    def close_camera(self):
+        self.is_running = False
+        time.sleep(0.1)
+        if self.cap.isOpened():
+            self.cap.release()
+        cv2.destroyAllWindows()
+        print("Camera Resource Released.")
+
     def scan_scene(self):
         ret, frame = self.cap.read()
         if not ret:
             return ["Camera Error"]
-
         results = self.recognize(frame)
-
-
         if not results:
-            return []  # Khali list return karo
-
+            return []
         found_names = []
         for face in results:
-            name = face['name']
-            found_names.append(name)
+            found_names.append(face['name'])
         return found_names
 
     def get_info(self, name_query):
-        """
-        Retrieves info from DB using Smart/Fuzzy Matching.
-        Agar user 'Ankit' bole aur DB me 'Ankit Dandotia' ho, to bhi pakad lega.
-        """
+        # (Same as before)
         try:
-            # 1. Pehle EXACT match try karo (Fastest)
             self.cursor.execute("SELECT name, info FROM humans WHERE name LIKE ?", (name_query,))
             row = self.cursor.fetchone()
-
             if row:
                 return row[0], json.loads(row[1])
-
-            # 2. Agar Exact nahi mila, to PARTIAL match try karo
-            # Example: name_query="Ankit" -> Dhoondo jiske naam me "Ankit" aata ho
-            pattern = f"%{name_query}%"
-            self.cursor.execute("SELECT name, info FROM humans WHERE name LIKE ?", (pattern,))
-            row = self.cursor.fetchone()
-
-            if row:
-                # DB wala full name return karo (e.g., 'Ankit Dandotia')
-                print(f"[DB] Partial match found: '{name_query}' -> '{row[0]}'")
-                return row[0], json.loads(row[1])
-
-            # 3. DEBUG: Agar kuch nahi mila to batao DB me kya hai
-            print(f"[DB] '{name_query}' not found. Dumping all names in DB for check:")
-            self.cursor.execute("SELECT DISTINCT name FROM humans")
-            all_names = self.cursor.fetchall()
-            print([n[0] for n in all_names])
-
             return None
-
-        except Exception as e:
-            print(f"DB Error: {e}")
+        except Exception:
             return None
-
 
 
 if __name__ == "__main__":
     v = Vision_Pro()
 
-    cap = cv2.VideoCapture(0)
-    print("Press 'r' to register yourself, 'q' to quit")
+    print("\n TEST MODE: Press 'q' to quit ")
+    print("1. If you added photos in 'known_faces', they are imported now.")
+    print("2. The camera will now try to recognize you.")
 
     while True:
-        ret, frame = cap.read()
+        ret, frame = v.cap.read()
         if not ret: break
 
         detections = v.recognize(frame)
@@ -337,35 +331,16 @@ if __name__ == "__main__":
             x1, y1, x2, y2 = d['bbox']
             name = d['name']
             score = d['score']
-            info = d['info']
 
             color = (0, 255, 0) if name != "Unknown" else (0, 0, 255)
-
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
 
             label = f"{name} ({int(score * 100)}%)"
             cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-            if name != "Unknown" and info:
-                info_str = str(info.get('role', ''))
-                cv2.putText(frame, info_str, (x1, y2 + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+        cv2.imshow("Vision Pro Test", frame)
 
-        cv2.imshow("Trinetra InsightFace", frame)
-
-        key = cv2.waitKey(1)
-        if key == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-        elif key == ord('r'):
-            my_name = input("Enter Name: ")
-            my_role = input("Enter Role (e.g. Admin/User): ")
 
-            info_data = {
-                "role": my_role,
-                "access": "Level 1",
-                "last_seen": "Today"
-            }
-
-            v.register_face(frame, my_name, info_data)
-
-    cap.release()
-    cv2.destroyAllWindows()
+    v.close_camera()

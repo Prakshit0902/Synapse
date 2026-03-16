@@ -1,0 +1,8 @@
+- .venv/
+- vcpkg_installed/
+- .git/
+- .vs/
+- out/
+- build/
+- __pycache__/
+- *.pyc

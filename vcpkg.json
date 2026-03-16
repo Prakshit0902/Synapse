@@ -6,6 +6,8 @@
     "zeromq",
     "cppzmq",
     "nlohmann-json",
-    "miniaudio"
+    "miniaudio",
+    "onnxruntime",
+    "sdl2"
   ]
 }
