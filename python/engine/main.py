@@ -52,7 +52,7 @@ class Synapse:
     def start(self):
 
 
-        # ... baki imports ...
+
         state_manager = AssistantState(music_engine=self.music)
         while True:
             try:
@@ -109,7 +109,7 @@ class Synapse:
                             except:
                                 pass
 
-                            # CRITICAL: Mic Free Karo
+                            # Mic Free Karo
                             self.stream_music_mode.stop_stream()
                             self.stream_music_mode.close()
                             self.p_audio.terminate()
@@ -171,7 +171,7 @@ class Synapse:
                         os._exit(0)
 
                     # 2. Use ONLY the agentic approach for everything
-                    print(f"🤖 Processing with Agent: {command}")
+                    print(f"Processing with Agent: {command}")
                     agentic_response = self.brain.run_agentic_llm(command)
                     if agentic_response and "[REGISTER]" in agentic_response:
                         # Parse the signal: "[REGISTER] Ankit | DSA King"
@@ -179,7 +179,7 @@ class Synapse:
                             clean_data = agentic_response.replace("[REGISTER]", "").strip()
                             name_part, info_part = clean_data.split("|", 1)
 
-                            print(f"🚀 Triggering Registration for: {name_part.strip()}")
+                            print(f"Triggering Registration for: {name_part.strip()}")
                             self.handle_registration_flow(pre_name=name_part.strip(), pre_info=info_part.strip())
                             continue  # Loop wapas start karo
                         except Exception as e:
@@ -187,7 +187,7 @@ class Synapse:
                             self.mouth.speak("I had trouble starting the registration.")
 
                     if agentic_response and "I encountered" not in agentic_response:
-                        print(f"🤖 Agent Response: {agentic_response}")
+                        print(f"Agent Response: {agentic_response}")
 
                         # Check if it's a music response - DON'T speak it
                         if "Starting music:" in agentic_response:
@@ -201,7 +201,7 @@ class Synapse:
                         continue
 
                     # Fallback to chat if agent fails
-                    print(f"💬 Falling back to Chat: {command}")
+                    print(f"Falling back to Chat: {command}")
                     ai_response = self.brain.chat(command)
                     self.mouth.speak(ai_response)
 

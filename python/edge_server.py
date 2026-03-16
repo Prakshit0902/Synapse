@@ -84,7 +84,7 @@ class EdgeBridge:
                     packet = socket_audio.recv(flags=zmq.NOBLOCK)
                     chunk = np.frombuffer(packet, dtype=np.float32)
                     volume = np.sqrt(np.mean(chunk ** 2))
-
+                    print(f"[DEBUG] Raw volume: {volume:.6f} dB")
                     if volume > self.SILENCE_THRESHOLD:
                         if not is_speaking:
                             print("User Speaking...", end="\r")
@@ -130,7 +130,7 @@ class EdgeBridge:
                         print("\nSUCCESS: First Video Frame Received from Pi! Connection Active.")
                         first_frame = False
 
-                    cv.imshow("TRINETRA EDGE VISION", frame)
+                    cv.imshow("Synapse VISION", frame)
 
                 if cv.waitKey(1) == ord('q'):
                     break

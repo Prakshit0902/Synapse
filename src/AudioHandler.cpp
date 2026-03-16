@@ -105,7 +105,7 @@ bool AudioHandler::startRecording() {
 
     // -> ma_device_start: Mic ko active mode mein dalta hai, jisse data_callback chalna shuru ho jata hai jab mic mein awaaz aati hai...
     if (ma_device_start(&device) != MA_SUCCESS) {
-        std::cerr << "❌ AudioHandler: Start fail!" << std::endl;
+        std::cerr << "AudioHandler: Start fail!" << std::endl;
 
     ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
     deviceConfig.capture.format = ma_format_f32;
@@ -114,8 +114,10 @@ bool AudioHandler::startRecording() {
     deviceConfig.dataCallback = data_callback;
     deviceConfig.pUserData = &this->contextPacket;
 
-    if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) return false;
-
+    if (ma_device_init(NULL, &deviceConfig, &device) != MA_SUCCESS) {
+        std::cerr << "[ERROR] Miniaudio capture device init failed! Error Code: " << result << std::endl;
+        return false;
+    }
     isRecorderInitialized = true;
     return true;
 }
@@ -169,7 +171,7 @@ void AudioHandler::stopRecording() {
     // -> ma_device_stop: Mic hardware ko 'Sleep' mode mein dalta hai...
     ma_device_stop(&device);
     isRecording = false;
-    std::cout << "🛑 Audio Streaming Stopped." << std::endl;
+    std::cout << "Audio Streaming Stopped." << std::endl;
 void AudioHandler::startListening() {
     if (!isPlayerInitialized) return;
 
