@@ -36,48 +36,52 @@ AudioHandler::~AudioHandler() { cleanup(); }
 bool AudioHandler::initRecorder(NetworkHandler* network) {
     this->contextPacket.net = network;
 
-    ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
-    deviceConfig.capture.format = ma_format_f32;
-    deviceConfig.capture.channels = 1;
-    deviceConfig.sampleRate = 16000;
-    deviceConfig.dataCallback = data_callback;
-    deviceConfig.pUserData = &this->contextPacket;
-
-    // --- 🚀 ADVANCED: FINDING THE RIGHT MIC MANUALLY ---
-    ma_context context;
-    if (ma_context_init(NULL, 0, NULL, &context) != MA_SUCCESS) {
+    // Now using member variable, not stack variable
+    if (ma_context_init(NULL, 0, NULL, &this->maContext) != MA_SUCCESS) {
         std::cerr << "Failed to initialize miniaudio context." << std::endl;
         return false;
     }
 
     ma_device_info* pCaptureDeviceInfos;
     ma_uint32 captureDeviceCount;
-    if (ma_context_get_devices(&context, NULL, NULL, &pCaptureDeviceInfos, &captureDeviceCount) == MA_SUCCESS) {
+
+    ma_device_config deviceConfig = ma_device_config_init(ma_device_type_capture);
+    deviceConfig.capture.format = ma_format_f32;
+    deviceConfig.capture.channels = 1;
+    deviceConfig.sampleRate = 48000;
+    deviceConfig.dataCallback = data_callback;
+    deviceConfig.pUserData = &this->contextPacket;
+
+    if (ma_context_get_devices(&this->maContext, NULL, NULL,
+        &pCaptureDeviceInfos, &captureDeviceCount) == MA_SUCCESS) {
         std::cout << "--- AVAILABLE MICROPHONES ---" << std::endl;
         for (ma_uint32 i = 0; i < captureDeviceCount; ++i) {
             std::cout << i << " - " << pCaptureDeviceInfos[i].name << std::endl;
-
             std::string micName(pCaptureDeviceInfos[i].name);
-            // Plughw ya USB keyword se mic dhoondh rahe hain
-            if (micName.find("USB") != std::string::npos || micName.find("plughw:1,0") != std::string::npos) {
+            if (micName.find("USB") != std::string::npos) {
                 std::cout << "[INFO] Found our USB Mic! Using this device ID." << std::endl;
-                deviceConfig.capture.pDeviceID = &pCaptureDeviceInfos[i].id;
+                this->selectedMicID = pCaptureDeviceInfos[i].id;
+                this->micIDFound = true;
             }
         }
         std::cout << "-----------------------------" << std::endl;
-    }
+        // deviceConfig update karo agar mic mila
+        if (this->micIDFound) {
+            deviceConfig.capture.pDeviceID = &this->selectedMicID;
+        }
+    } 
 
-    ma_result result = ma_device_init(&context, &deviceConfig, &device);
+  
+    ma_result result = ma_device_init(&this->maContext, &deviceConfig, &device);
     if (result != MA_SUCCESS) {
-        std::cerr << "[ERROR] Miniaudio capture device init failed! Error Code: " << result << std::endl;
-        ma_context_uninit(&context);
+        std::cerr << "[ERROR] Miniaudio capture device init failed! Code: " << result << std::endl;
+        ma_context_uninit(&this->maContext);
         return false;
     }
 
     isRecorderInitialized = true;
     return true;
 }
-
 bool AudioHandler::startRecording() {
     if (!isRecorderInitialized) return false;
     return ma_device_start(&device) == MA_SUCCESS;
@@ -169,8 +173,10 @@ void AudioHandler::startListening() {
 void AudioHandler::cleanup() {
     if (isRecorderInitialized) {
         ma_device_uninit(&device);
+        ma_context_uninit(&this->maContext);  // ← Add this line
         isRecorderInitialized = false;
     }
+    
     if (isPlayerInitialized) {
         if (server_fd != INVALID_SOCKET) CLOSE_SOCKET(server_fd);
         if (audioDevice > 0) SDL_CloseAudioDevice(audioDevice);

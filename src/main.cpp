@@ -44,6 +44,8 @@ int main(int argc, char* argv[]) {
     AudioHandler* player = new AudioHandler(5000);
     if (!player->initPlayer()) {
         std::cerr << "[ERROR] Player Initialization failed!" << std::endl;
+        delete player;  // ← bas ye ek line add kar
+        player = nullptr;
     }
     else {
         std::thread audioThread([player]() {
@@ -75,7 +77,7 @@ int main(int argc, char* argv[]) {
         continue;
     }
 
-    std::cout << "-> Sending Frame to PC..." << std::endl; // YE LINE DAAL
+    //std::cout << "-> Sending Frame to PC..." << std::endl; 
     nh_video.sendFrame(frame);
 }
 

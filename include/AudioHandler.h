@@ -63,7 +63,10 @@ private:
     bool isInitialized; // -> Audio device initialized hai ya nahi, taaki startRecording se pehle check kar sakein...
     bool isRecording; // -> Recording chal rahi hai ya nahi, taaki stopRecording sahi se kaam kare...
     void cleanup();
-
+    ma_context maContext; 
+    ma_device_id selectedMicID;   // Add this
+    bool micIDFound = false;
+        
     // Recorder
   
     bool isRecorderInitialized;
