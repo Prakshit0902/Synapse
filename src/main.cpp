@@ -15,7 +15,9 @@ int main(int argc, char* argv[]) {
 
     // 1. HARDWARE & NETWORK SETUP
     CameraHandler ch;
-    bool camerReady = false;
+    bool cameraReady = false;
+
+    // 5 baar retry karega camera kholne ka, har baar 1 second rukk kar
     for (int i = 0; i < 5; i++) {
         if (ch.initCamera(0)) {
             cameraReady = true;
@@ -23,10 +25,13 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "[WARNING] Camera busy, retrying in 1s... (" << i + 1 << "/5)" << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(1));
-    if (ch.initCamera(0)) {
-        std::cerr << "[ERROR] Camera Initialization Failed!" << std::endl;
-        return -1;
     }
+
+    if (!cameraReady) {
+        std::cerr << "[FATAL ERROR] Camera Initialization failed completely!" << std::endl;
+        return -1; // Yahan exit ho jayega gracefully bina segfault ke
+    }
+  
 
     NetworkHandler nh_video;
     nh_video.init("tcp://*:5555"); // Video Stream PC ko bhejega
