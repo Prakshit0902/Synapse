@@ -48,7 +48,7 @@ public:
     bool init(NetworkHandler* network);
 
     AudioHandler(int port);
-    ~AudioHandler();
+    
 
     bool initRecorder(NetworkHandler* network);
     bool startRecording();
@@ -65,9 +65,9 @@ private:
     void cleanup();
 
     // Recorder
-    ma_device device;
+  
     bool isRecorderInitialized;
-    bool isRecording;
+ 
     AudioContext contextPacket;
 
     // Player (Cross-Platform Sockets)
