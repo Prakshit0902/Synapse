@@ -57,7 +57,16 @@ class LLM_Engine:
         print(colorama.Fore.GREEN + f"[STT] Model loaded in {time.time() - start_time:.2f} seconds")
 
     def run_agentic_llm(self, text):
-        # 1. PRE-PROCESSING
+        """
+        It processes the user input and decides which agentic tool is suitable for using it.
+        Args:
+            text:  user input
+
+        Returns:
+            agent response
+
+        """
+        # PRE-PROCESSING
         text = text.lower().replace("pre-edarsion", "priyadarshan").replace("predation", "priyadarshan")
 
         #  INJECT VISION CONTEXT 
@@ -66,7 +75,7 @@ class LLM_Engine:
 
         if visual_user and visual_user not in ["unknown", "camera error", "none"]:
             if self.id_manager.current_user.lower() != visual_user:
-                print(f"👀 Vision Override: Switching ID Manager to {visual_user}")
+                print(f"Vision Override: Switching ID Manager to {visual_user}")
                 self.id_manager.switch_user(visual_user)
 
             user_mem = self.dynamicDb.find_user(visual_user)
@@ -126,12 +135,12 @@ class LLM_Engine:
 
         prompt = f"{system_context}\n{tools_desc}\nUser asked: \"{text}\"\nDECIDE TOOL. OUTPUT FORMAT ONLY."
 
-        print(f"🤖 Agent Thinking (Vision Aware)...")
+        print(f"Agent Thinking (Vision Aware)...")
 
         try:
             raw_response = ollama.generate(model='qwen2.5:3b-instruct', prompt=prompt, options={'temperature': 0.1})
             response = raw_response['response'].strip()
-            print(f"🤖 Agent Output: {response}")
+            print(f"Agent Output: {response}")
 
             match = re.search(r"Call\s*:\s*(\w+)\s+(.*)", response, re.IGNORECASE)
 
@@ -150,7 +159,7 @@ class LLM_Engine:
                         return "I don't see anyone right now."
 
                 elif tool_name == "weather":
-                    print(f"🔍 Fetching weather data for: {argument}...")
+                    print(f"Fetching weather data for: {argument}...")
                     data = self.weather.get_weather(argument)
                     make_response = self.build_response(text, data)
                     return make_response
@@ -164,10 +173,10 @@ class LLM_Engine:
                         forbidden_names = ["Naina", "i", "me", "myself", "person", "someone", "unknown", "nobody",
                                            "user"]
                         if extracted_name.lower() in forbidden_names or len(extracted_name) < 3:
-                            print(f"🚫 Blocked Garbage Add Request: {extracted_name}")
+                            print(f"Blocked Garbage Add Request: {extracted_name}")
                             return "I'm not sure who you want me to remember. Can you say the name clearly?"
 
-                        print(f"🚀 Triggering Registration for: {extracted_name}")
+                        print(f"Triggering Registration for: {extracted_name}")
                         self.dynamicDb.add_person(extracted_name, extracted_info)
                         return f"[REGISTER] {extracted_name} | {extracted_info}"
                     else:
@@ -178,7 +187,7 @@ class LLM_Engine:
                     if json_info and "name" in json_info:
                         extracted_name = json_info["name"]
                         extracted_info = json_info["info"]
-                        print(f"🔄 Updating: {extracted_name} -> {extracted_info}")
+                        print(f"Updating: {extracted_name} -> {extracted_info}")
                         self.dynamicDb.update_user(extracted_name, extracted_info)
                         return f"Updated information for {extracted_name}."
                     else:
@@ -202,12 +211,12 @@ class LLM_Engine:
                 elif tool_name == "search":
                     if any(x in argument.lower() for x in ["developer", "creator", "maker"]):
                         argument = "priyadarshan"
-                    print(f"🔍 Searching DB for: {argument}")
+                    print(f"Searching DB for: {argument}")
                     data = self.dynamicDb.find_user(argument)
                     if data:
                         return self.generate_info(str(data), argument)
                     else:
-                        print(f"⚠️ DB Miss. Switching to General Knowledge.")
+                        print(f"DB Miss. Switching to General Knowledge.")
                         return self.chat(text)
 
             if "final answer" in response.lower():
@@ -220,7 +229,7 @@ class LLM_Engine:
             return self.chat(text)
 
         except Exception as e:
-            print(f"❌ Agent Error: {e}")
+            print(f"Agent Error: {e}")
             # Fallback to chat to prevent silence
             return self.chat(text)
 
@@ -234,7 +243,7 @@ class LLM_Engine:
         detected_names = self.vision.scan_scene()
 
         # Debugging ke liye print (Optional)
-        # print(f"👀 Vision Saw: {detected_names}")
+        # print(f"Vision Saw: {detected_names}")
 
         if detected_names:
             # 1. Unknown aur Error hatao
@@ -260,6 +269,14 @@ class LLM_Engine:
         return self.current_user.lower()
 
     def extract_parameters(self, text):
+        """
+        Extracts the 'name' and 'info' from the given text.
+        Args:
+            text: Takes a string containing name and info
+
+        Returns: {name :string, info :string}
+
+        """
         prompt = f"""
         Extract the 'name' and 'info' from the following user command.
         Command: "{text}"
@@ -270,10 +287,18 @@ class LLM_Engine:
             response_text = raw['response'].strip().replace("```json", "").replace("```", "").strip()
             return json.loads(response_text)
         except Exception as e:
-            print(f"❌ Extraction Error: {e}")
+            print(f"Extraction Error: {e}")
             return None
 
     def chat(self, user_input):
+        """
+            The main chat function. Where the user asks general queries and it generates responses.
+        Args:
+            user_input: Prompts
+
+        Returns: Generated Response
+
+        """
         # 1. Update history
         self.history.append({"role": "user", "content": user_input})
 
@@ -314,6 +339,17 @@ class LLM_Engine:
             return f"Here is the data: {data}"
 
     def generate_info(self, json_text, name):
+        """
+        raw_json + name -> Meaningful Response
+        Examples (Input): {"name": "Ankit", "info": "God of DSA"}
+        Examples (Input): {"name": "Prerak", "info": "God of Javascript"}
+        Args:
+            json_text:
+            name:
+
+        Returns: Meaningful Response
+
+        """
         system_prompt = f"Describe {name} based on this data. Use 'He/She/They', not 'I'. Data: {json_text}"
         try:
             response = ollama.generate(model='qwen2.5:3b-instruct', prompt=system_prompt)
