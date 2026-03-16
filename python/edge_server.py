@@ -5,13 +5,12 @@ import time
 import cv2 as cv
 import os
 
-# Teri main file se Synapse class import kar rahe hain
 from python.engine.main import Synapse
 
 
 class EdgeBridge:
     def __init__(self):
-        print("🌐 Starting Trinetra Edge Bridge...")
+        print("Starting Synapse Edge Bridge...")
 
         self.app = Synapse()
 
@@ -63,8 +62,12 @@ class EdgeBridge:
     def audio_listener(self):
         context = zmq.Context()
         socket_audio = context.socket(zmq.SUB)
-        socket_audio.subscribe(b"")
         socket_audio.connect(f"tcp://192.168.1.52:{self.AUDIO_PORT}")
+        socket_audio.setsockopt_string(zmq.SUBSCRIBE, '')
+
+
+        poller = zmq.Poller()
+        poller.register(socket_audio, zmq.POLLIN)
 
         print(f"👂 Edge Audio Listening on {self.AUDIO_PORT}...")
 
@@ -74,36 +77,34 @@ class EdgeBridge:
 
         while True:
             try:
-                packet = socket_audio.recv()
-                chunk = np.frombuffer(packet, dtype=np.float32)
+                # 100ms ka timeout. Agar data nahi hai toh loop aage badhega
+                socks = dict(poller.poll(100))
 
-                volume = np.sqrt(np.mean(chunk ** 2))
-                print(f"🔊 Debug Volume: {volume:.5f}", end="\r")  # YE LINE DAAL
+                if socket_audio in socks and socks[socket_audio] == zmq.POLLIN:
+                    packet = socket_audio.recv(flags=zmq.NOBLOCK)
+                    chunk = np.frombuffer(packet, dtype=np.float32)
+                    volume = np.sqrt(np.mean(chunk ** 2))
 
+                    if volume > self.SILENCE_THRESHOLD:
+                        if not is_speaking:
+                            print("User Speaking...", end="\r")
+                            is_speaking = True
+                        audio_buffer.append(chunk)
+                        last_speech_time = time.time()
 
-                if volume > self.SILENCE_THRESHOLD:
-                    if not is_speaking:
-                        print("🗣️ User Speaking...", end="\r")
-                        is_speaking = True
-                    audio_buffer.append(chunk)
-                    last_speech_time = time.time()
-                else:
-                    if is_speaking and (time.time() - last_speech_time) > self.SILENCE_DURATION:
-                        print("\n📝 Transcribing...")
-                        full_audio = np.concatenate(audio_buffer)
+                # Silence logic ab if/else ke bahar bhi check ho sakta hai
+                # kyunki poller timeout dega aur loop chalega
+                if is_speaking and (time.time() - last_speech_time) > self.SILENCE_DURATION:
+                    print("\nTranscribing...")
+                    full_audio = np.concatenate(audio_buffer)
+                    text = self.app.ear.transcribe_raw(full_audio)
 
-                        # 🟢 STT TWEAK USE KIYA YAHAN 🟢
-                        # self.app.ear is your existing STT_Engine instance
-                        text = self.app.ear.transcribe_raw(full_audio)
+                    if text:
+                        self.process_command(text)
 
-                        if text:
-                            # Direct send to Brain logic
-                            self.process_command(text)
-
-                        # Reset
-                        is_speaking = False
-                        audio_buffer = []
-                        print("👂 Edge Audio Listening...", end="\r")
+                    is_speaking = False
+                    audio_buffer = []
+                    print("Edge Audio Listening...", end="\r")
 
             except Exception as e:
                 print(f"Audio Error: {e}")
@@ -114,7 +115,7 @@ class EdgeBridge:
         socket_video = context.socket(zmq.SUB)
         socket_video.subscribe(b"")
         socket_video.connect(f"tcp://192.168.1.52:{self.VIDEO_PORT}")
-        print(f"📷 Edge Video Receiver started on {self.VIDEO_PORT}... Waiting for Pi...")
+        print(f"Edge Video Receiver started on {self.VIDEO_PORT}... Waiting for Pi...")
 
         first_frame = True  # Tracker laga diya
 

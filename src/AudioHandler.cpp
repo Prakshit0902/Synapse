@@ -4,7 +4,6 @@
 #include <cstring>
 #include <chrono>
 
-// ❌ is_active, is_pc_speaking, last_activity_time hata diye (ab zaroorat nahi)
 
 #define BUFFER_SIZE 4096
 
