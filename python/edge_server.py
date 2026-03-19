@@ -4,6 +4,7 @@ import threading
 import time
 import cv2 as cv
 import os
+import scipy.signal
 
 from python.engine.main import Synapse
 
@@ -11,124 +12,150 @@ from python.engine.main import Synapse
 class EdgeBridge:
     def __init__(self):
         print("Starting Synapse Edge Bridge...")
-
         self.app = Synapse()
 
-        # Networking Constants
         self.VIDEO_PORT = "5555"
         self.AUDIO_PORT = "5556"
-        self.SILENCE_THRESHOLD = 0.01  # Aawaz ka threshold
-        self.SILENCE_DURATION = 1.0  # 1 second chup = sentence complete
+
+        self.PI_SAMPLE_RATE  = 48000
+        self.STT_SAMPLE_RATE = 16000
+        self.SILENCE_THRESHOLD = 0.01
+        self.SILENCE_DURATION  = 1.0
+
+        # Pi se aane wala latest frame yahan store hoga
+        self.latest_frame = None
+        self.frame_lock   = threading.Lock()
+
+    def _resample_audio(self, audio_np):
+        """48kHz Pi audio → 16kHz STT ke liye"""
+        target_length = int(len(audio_np) * self.STT_SAMPLE_RATE / self.PI_SAMPLE_RATE)
+        return scipy.signal.resample(audio_np, target_length).astype(np.float32)
 
     def process_command(self, command):
-        """MIMIC OF MAIN.PY LOGIC: Agentic processing -> TTS"""
-        if not command: return
+        """main.py ka exact flow — music remove, baki same"""
+        if not command:
+            return
 
         print(f"\n🎤 Edge Heard: {command}")
         command_lower = command.lower()
 
-        # 1. Check Exit
+        # 1. Exit Check
         if self.app.check_exit(command_lower):
-            self.app.mouth.speak_for_rpi("Goodbye! Shutting down edge connection.")
-            print("Stopping Edge Synapse...")
+            self.app.mouth.speak_for_rpi("Goodbye! Shutting down.")
             os._exit(0)
 
-        # 2. Agentic Approach
-        print(f"🤖 Processing with Agent: {command}")
+        # 2. Agentic Processing — same as main.py
+        print(f"🤖 Processing: {command}")
         agentic_response = self.app.brain.run_agentic_llm(command)
 
-        # Registration check
         if agentic_response and "[REGISTER]" in agentic_response:
-            print("🚀 Triggering Edge Registration flow...")
-            # (You can map this to a modified edge_registration flow later)
-            self.app.mouth.speak_for_rpi("Registration initiated from edge.")
+            try:
+                clean_data  = agentic_response.replace("[REGISTER]", "").strip()
+                name_part, info_part = clean_data.split("|", 1)
+                print(f"Registration triggered: {name_part.strip()}")
+
+                self.app.mouth.speak_for_rpi(f"Registering {name_part.strip()}.")
+            except Exception as e:
+                print(f"Registration Parse Error: {e}")
+                self.app.mouth.speak_for_rpi("Registration failed.")
             return
 
-        # Normal Agent Response
         if agentic_response and "I encountered" not in agentic_response:
-            print(f"🤖 Agent Response: {agentic_response}")
-            if "Starting music:" in agentic_response:
-                print("[System] Music starting - Edge mode")
-                self.app.manual_music_mode = True
-            else:
-                self.app.mouth.speak_for_rpi(agentic_response)  # Send to C++
+            print(f"🤖 Response: {agentic_response}")
+
+            # testing
+            self.app.mouth.speak(agentic_response)
+            self.app.mouth.speak_for_rpi(agentic_response)
             return
 
         # 3. Fallback
-        print(f"💬 Falling back to Chat: {command}")
+        print(f"💬 Fallback Chat: {command}")
         ai_response = self.app.brain.chat(command)
-        self.app.mouth.speak_for_rpi(ai_response)  # Send to C++
+        #testing
+        self.app.mouth.speak(ai_response)
+        self.app.mouth.speak_for_rpi(ai_response)
 
     def audio_listener(self):
-        context = zmq.Context()
+        context      = zmq.Context()
         socket_audio = context.socket(zmq.SUB)
         socket_audio.connect(f"tcp://192.168.1.52:{self.AUDIO_PORT}")
         socket_audio.setsockopt_string(zmq.SUBSCRIBE, '')
 
-
         poller = zmq.Poller()
         poller.register(socket_audio, zmq.POLLIN)
 
-        print(f"👂 Edge Audio Listening on {self.AUDIO_PORT}...")
+        print(f"👂 Audio Listening on port {self.AUDIO_PORT}...")
 
-        audio_buffer = []
-        is_speaking = False
+        audio_buffer     = []
+        is_speaking      = False
         last_speech_time = time.time()
 
         while True:
             try:
-                # 100ms ka timeout. Agar data nahi hai toh loop aage badhega
                 socks = dict(poller.poll(100))
 
-                if socket_audio in socks and socks[socket_audio] == zmq.POLLIN:
+                if socket_audio in socks:
                     packet = socket_audio.recv(flags=zmq.NOBLOCK)
-                    chunk = np.frombuffer(packet, dtype=np.float32)
+                    chunk  = np.frombuffer(packet, dtype=np.float32)
                     volume = np.sqrt(np.mean(chunk ** 2))
-                    print(f"[DEBUG] Raw volume: {volume:.6f} dB")
+
                     if volume > self.SILENCE_THRESHOLD:
                         if not is_speaking:
-                            print("User Speaking...", end="\r")
+                            print("🗣️ Speaking...", end="\r")
                             is_speaking = True
                         audio_buffer.append(chunk)
                         last_speech_time = time.time()
 
-                # Silence logic ab if/else ke bahar bhi check ho sakta hai
-                # kyunki poller timeout dega aur loop chalega
+                # Silence detect
                 if is_speaking and (time.time() - last_speech_time) > self.SILENCE_DURATION:
-                    print("\nTranscribing...")
+                    print("\n📝 Transcribing...")
                     full_audio = np.concatenate(audio_buffer)
-                    text = self.app.ear.transcribe_raw(full_audio)
+                    resampled  = self._resample_audio(full_audio)
+                    text       = self.app.ear.transcribe_raw(resampled)
 
                     if text:
                         self.process_command(text)
 
-                    is_speaking = False
+                    is_speaking  = False
                     audio_buffer = []
-                    print("Edge Audio Listening...", end="\r")
+                    print("👂 Listening...", end="\r")
 
             except Exception as e:
                 print(f"Audio Error: {e}")
                 break
 
     def video_listener(self):
-        context = zmq.Context()
+        context      = zmq.Context()
         socket_video = context.socket(zmq.SUB)
         socket_video.subscribe(b"")
         socket_video.connect(f"tcp://192.168.1.52:{self.VIDEO_PORT}")
-        print(f"Edge Video Receiver started on {self.VIDEO_PORT}... Waiting for Pi...")
+        print(f"📹 Video Receiver on port {self.VIDEO_PORT}...")
 
-        first_frame = True  # Tracker laga diya
+        first_frame = True
 
         while True:
             try:
                 packet = socket_video.recv(flags=zmq.NOBLOCK)
                 np_arr = np.frombuffer(packet, dtype=np.uint8)
-                frame = cv.imdecode(np_arr, cv.IMREAD_COLOR)
+                frame  = cv.imdecode(np_arr, cv.IMREAD_COLOR)
 
                 if frame is not None:
                     if first_frame:
-                        print("\nSUCCESS: First Video Frame Received from Pi! Connection Active.")
+                        print("\n✅ First frame received from Pi!")
                         first_frame = False
+
+                    # Pi ka frame Vision engine ko do
+                    # Vision_Pro ka apna cap.read() bypass karke
+                    with self.frame_lock:
+                        self.latest_frame = frame.copy()
+
+                    # Vision recognition Pi ke frame pe
+                    results = self.app.vision.recognize(frame)
+                    if results:
+                        names = [r['name'] for r in results]
+                        # LLM engine ko pata chale kaun dikh raha hai
+                        if names:
+                            self.app.brain.current_user = names[0].rstrip("0123456789")
 
                     cv.imshow("Synapse VISION", frame)
 
@@ -136,18 +163,16 @@ class EdgeBridge:
                     break
 
             except zmq.Again:
-                # Ye normal hai jab tak naya frame nahi aata
                 pass
             except Exception as e:
-                # Agar koi aur error hai toh ab chup nahi baithega
-                print(f"Video Receiver Error: {e}")
+                print(f"Video Error: {e}")
 
     def start(self):
-        t_audio = threading.Thread(target=self.audio_listener)
+        t_audio        = threading.Thread(target=self.audio_listener)
         t_audio.daemon = True
         t_audio.start()
 
-        self.video_listener()
+        self.video_listener()  # Main thread
 
 
 if __name__ == "__main__":

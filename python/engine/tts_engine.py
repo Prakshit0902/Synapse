@@ -217,3 +217,7 @@ class TTS_Engine:
         def simple_gen(): yield text
 
         self.speak_stream(simple_gen(), target="rpi")
+
+    @property
+    def is_speaking(self):
+        return self._is_speaking

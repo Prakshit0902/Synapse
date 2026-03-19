@@ -285,12 +285,14 @@ class Vision_Pro:
     def close_camera(self):
         self.is_running = False
         time.sleep(0.1)
-        if self.cap.isOpened():
+        if self.cap is not None and self.cap.isOpened():
             self.cap.release()
         cv2.destroyAllWindows()
         print("Camera Resource Released.")
 
     def scan_scene(self):
+        if self.cap is None or not self.cap.isOpened():
+            return ["Camera Error"]
         ret, frame = self.cap.read()
         if not ret:
             return ["Camera Error"]

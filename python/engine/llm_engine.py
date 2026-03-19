@@ -17,7 +17,7 @@ from python.engine.weather_system import Wheather_Engine
 class LLM_Engine:
     def __init__(self, music_engine=None, vision_engine=None):
         # Naina System Prompt (Strict Language Enforcer)
-        print(colorama.Fore.YELLOW + "[STT] Initializing Whisper Model...")
+        print(colorama.Fore.YELLOW + "[LLM] Initializing Whisper Model...")
 
         # Use provided music engine
         if music_engine:
@@ -54,7 +54,7 @@ class LLM_Engine:
             {"role": "system", "content": system_instructions}
         ]
         start_time = time.time()
-        print(colorama.Fore.GREEN + f"[STT] Model loaded in {time.time() - start_time:.2f} seconds")
+        print(colorama.Fore.GREEN + f"[LLM] Model loaded in {time.time() - start_time:.2f} seconds")
 
     def run_agentic_llm(self, text):
         """
