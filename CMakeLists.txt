@@ -60,7 +60,7 @@ else()
 
     # ZMQ Check
     pkg_check_modules(ZMQ libzmq REQUIRED)
-    pkg_check_modules(LIBCAMERA REQUIRED libcamera)
+  
     # 2. Includes
     include_directories(${RPI_LIBS_DIR})
     include_directories(${SDL2_INCLUDE_DIRS}) # SDL2 ke headers yahan hain
@@ -73,7 +73,7 @@ else()
         ${ZMQ_LIBRARIES}
         ${ALSA_LIBRARIES}
         ${SDL2_LIBRARIES}  # SDL2 Link karo
-        ${LIBCAMERA_LIBRARIES}
+      
         pthread
         atomic
     )
