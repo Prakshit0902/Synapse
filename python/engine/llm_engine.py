@@ -153,9 +153,13 @@ class LLM_Engine:
             FORMAT (PIPE REQUIRED):
             Call : RemindMe <task> | <YYYY-MM-DD HH:MM>
             
-            REMINDLIST  EXACTLY:
-            Call : RemindList all
-            (no time, no date — give'all')
+            REMINDLIST RULE (VERY STRICT):
+            - User asks "any reminders?" / "do I have any schedule"?" / "pending reminders?"
+            - WRITE EXACTLY : Call : RemindList all
+            - NO PIPE, NO DATE, NO EXTRA TEXT
+            - WRONG: Call : RemindList all | 2026-03-23
+            - WRONG: Call : RemindList check
+            - RIGHT: Call : RemindList all
             
 
             CRITICAL FALLBACK (General Knowledge):
@@ -174,7 +178,7 @@ class LLM_Engine:
             response = raw_response['response'].strip()
             print(f"Agent Output: {response}")
 
-            match = re.search(r"Call\s*:\s*(\w+)\s+(.*)", response, re.IGNORECASE)
+            match = re.search(r"Call\s*:\s*(\w+(?:\w+)?)\s*(.*)", response, re.IGNORECASE)
 
             if match:
                 tool_name = match.group(1).lower()
@@ -216,7 +220,8 @@ class LLM_Engine:
                 elif tool_name == "remindlist":
                     # Argument ignore karo — pipe wala garbage bhi aa sakta hai
                     result = self.reminder_engine.get_all()
-                    return f"Your pending reminders:\n{result}"
+                    return f"Your pending reminders: {result}"
+
                 elif tool_name == "remindme":
                     try:
                         if "|" not in argument:
