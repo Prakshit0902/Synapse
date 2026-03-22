@@ -62,14 +62,14 @@ class Synapse:
                 state.set_listening(False)
 
                 if command:
-                    print(f"🎤 Heard: {command}")
+                    print(f"[Heard] : {command}")
 
                     if self.check_exit(command.lower()):
                         self.vision.close_camera()
                         self.mouth.speak("Goodbye!")
                         os._exit(0)
 
-                    print(f"🤖 Processing: {command}")
+                    print(f"[Processing] : {command}")
                     agentic_response = self.brain.run_agentic_llm(command)
 
                     if agentic_response and "[REGISTER]" in agentic_response:
@@ -85,12 +85,12 @@ class Synapse:
                         continue
 
                     if agentic_response and "I encountered" not in agentic_response:
-                        print(f"🤖 Response: {agentic_response}")
+                        print(f"[Response] : {agentic_response}")
                         self.mouth.speak(agentic_response)
                         continue
 
                     # Fallback
-                    print(f"💬 Fallback Chat: {command}")
+                    print(f"[Fallback Chat] : {command}")
                     ai_response = self.brain.chat(command)
                     self.mouth.speak(ai_response)
 
@@ -119,7 +119,7 @@ class Synapse:
             while hasattr(self.mouth, '_is_speaking') and self.mouth._is_speaking:
                 time.sleep(0.1)
 
-        #  CASE 1: AUTO TRIGGER (Unknown Face Detected)
+        #  AUTO TRIGGER (Unknown Face Detected)
         # Sirf tab chalega jab auto_trigger True ho aur Agent ne naam na diya ho
         if auto_trigger and not final_name:
             self.mouth.speak("I see someone new. Do you want me to remember them?")
@@ -144,7 +144,7 @@ class Synapse:
                 self.mouth.speak("No response. Ignoring for now.")
                 return
 
-        #  CASE 2: NAME GATHERING (Only if Agent/Auto didn't give a name)
+        #  NAME GATHERING (Only if Agent/Auto didn't give a name)
         if not final_name:
             self.mouth.speak("Okay, tell me their name.")
             wait_for_sarah()
@@ -194,7 +194,7 @@ class Synapse:
             self.mouth.speak("I am struggling to hear. Let's try later.")
             return
 
-        #  STEP 3: EXISTING USER CHECK
+        #   EXISTING USER CHECK
         # Vision engine check: Kya ye naam pehle se DB me hai?
         existing_info = self.vision.check_person_exists(final_name)
 
@@ -229,7 +229,7 @@ class Synapse:
 
             return  # Exit, no photo needed for update
 
-        #  STEP 4: MANDATORY INFO (Only if info is missing)
+        # MANDATORY INFO (Only if info is missing)
         if len(final_info) < 5:
             self.mouth.speak(f"Got it, {final_name}. Now, tell me, who is he? What do you want me to remember?")
             wait_for_sarah()
@@ -242,7 +242,7 @@ class Synapse:
                 self.mouth.speak("Okay, I'll just remember him as a friend.")
                 wait_for_sarah()
 
-        #  STEP 5: VISION REGISTRATION (Photo Session)
+        #   VISION REGISTRATION (Photo Session)
         self.mouth.speak(f"Registering {final_name}. Please look at the camera.")
         wait_for_sarah()
 

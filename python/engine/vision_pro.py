@@ -29,7 +29,7 @@ class Vision_Pro:
 
         self.setup_db()
 
-        #  🚀 NEW FEATURE: Auto-Import from Folder 
+
         self.import_from_folder()
 
 
@@ -52,10 +52,10 @@ class Vision_Pro:
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
             print(
-                colorama.Fore.YELLOW + f"📁 Created '{folder_path}' folder. Drop photos here (e.g. 'Ankit.jpg') to auto-register!")
+                colorama.Fore.YELLOW + f"Folder Created '{folder_path}' folder. Drop photos here (e.g. 'Ankit.jpg') to auto-register!")
             return
 
-        print(colorama.Fore.CYAN + "📂 Scanning 'known_faces' folder for new people...")
+        print(colorama.Fore.CYAN + "Folder Scanning 'known_faces' folder for new people...")
 
         valid_extensions = ('.jpg', '.jpeg', '.png')
         new_count = 0
@@ -101,13 +101,13 @@ class Vision_Pro:
                     self.cursor.execute("INSERT INTO humans (name, embedding, info) VALUES (?, ?, ?)",
                                         (name, binary_enc, info))
                     new_count += 1
-                    print(f"✅ Auto-Registered: {name}")
+                    print(f"[Auto-Registered] : {name}")
                 except Exception as e:
-                    print(f"❌ Error importing {name}: {e}")
+                    print(f"[Error importing] {name}: {e}")
 
         if new_count > 0:
             self.conn.commit()
-            print(colorama.Fore.GREEN + f"🎉 Imported {new_count} new faces from folder!")
+            print(colorama.Fore.GREEN + f" Imported {new_count} new faces from folder!")
         else:
             print("Folder check complete. No new valid images found.")
 

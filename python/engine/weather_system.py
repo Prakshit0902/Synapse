@@ -1,9 +1,11 @@
+import os
+
 import requests
 
 class Wheather_Engine:
     def __init__(self):
         # -> OpenWeather se tempreature pta lagayenge
-        self.api_key = ""
+        self.api_key = os.getenv("api_key")
         self.base_url = "http://api.openweathermap.org/data/2.5/weather"
 
     def get_weather(self, city):
@@ -33,11 +35,11 @@ class Wheather_Engine:
                 rain = data.get('rain', {}).get('1h', 0) 
 
                 print("-" * 30)
-                print(f"✅ Success! Weather in {city.capitalize()}:")
-                print(f"🌡️  Temperature: {temp}°C")
-                print(f"☁️  Condition: {desc.title()}")
-                print(f"💧  Humidity: {humidity}%")
-                print(f"💨  Wind Speed: {wind_speed} m/s")
+                print(f" Success! Weather in {city.capitalize()}:")
+                print(f"[Temperature] : {temp}°C")
+                print(f"[Condition] : {desc.title()}")
+                print(f"[Humidity] : {humidity}%")
+                print(f"[Wind Speed] : {wind_speed} m/s")
                 
                 if rain > 0:
                     print(f"🌧️  Precipitation (last 1h): {rain} mm")
@@ -49,6 +51,7 @@ class Wheather_Engine:
                 return f"Temperature: {temp}°C, Condition: {desc.title()}, Humidity: {humidity}%, Wind: {wind_speed} m/s"
                 
             else:
+                print(f"This is the api : {self.api_key}")
                 print(f"❌ Error: {data['message']}")
                 return f"Weather data not available for {city}. Error: {data['message']}"
                 
@@ -60,5 +63,6 @@ class Wheather_Engine:
 if __name__ == "__main__":
     bot = Wheather_Engine()  # Fixed class name here too
     city = input("Enter City Name: ")
+    print(f"This is the api : " )
     result = bot.get_weather(city)
     print(f"Returned: {result}")

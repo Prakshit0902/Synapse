@@ -146,7 +146,7 @@ class TTS_Engine:
                 first_chunk = False
 
             try:
-                print(f"🤖 Naina: '{text_segment}'")
+                print(f"[Naina] : '{text_segment}'")
                 pygame.mixer.music.load(audio_data)
                 pygame.mixer.music.play()
                 while pygame.mixer.music.get_busy():

@@ -121,14 +121,16 @@ class LLM_Engine:
 
             TOOL USAGE GUIDELINES (STRICT):
             1. VISUAL AWARENESS: Use the 'VISUAL REALITY' data above. If it says you see someone (e.g., '{visual_user}'), ACKNOWLEDGE THEM. Do not say "I don't see anyone".
-            2. VISION TOOL: Use 'Call : Vision check' if user asks "What do you see?" or "Who am I?".
-            3. SEARCH: Use 'Call : Search <query>' ONLY if the user asks "Who is X?" or "What do you know about X?".
+            2. VISION TOOL: Use 'Call : Vision check' if user asks "What do you see?" or "Who am I?". Or any sentence that requires visual context.
+            3. SEARCH: Use 'Call : Search <query>' ONLY if the user asks "Who is X?" or "What do you know about X?". Or any sentence that requires context from the database.
             4. ADD (MEMORY): Use 'Call : Add <name> <info>' ONLY when the user EXPLICITLY asks to "remember", "save", "register", or "add" a person.
             5. UPDATE: Use 'Call : Update <name> <info>' only for correcting existing info.
             6. MUSIC: Use 'Call : Music <song>' for playback.
             7. WEATHER: Use 'Call : Weather <city>' for forecasts.
 
             CRITICAL FALLBACK (General Knowledge):
+            If you have a strong gut feeling that user wants to save or remember a person 
+            (You will find an Indian name and by the sentence you feel that wanna save the persona and info) then call the 'ADD' too.
             If the user asks a general question or simply wants to chat, DO NOT CALL ANY TOOL. 
             Instead, output: 'Final Answer : <Your direct answer here>'.
             """
@@ -242,7 +244,6 @@ class LLM_Engine:
         """
         detected_names = self.vision.scan_scene()
 
-        # Debugging ke liye print (Optional)
         # print(f"Vision Saw: {detected_names}")
 
         if detected_names:
@@ -252,7 +253,7 @@ class LLM_Engine:
             if known_faces:
                 raw_name = known_faces[0]  # Jaise: "Priyadarshan7"
 
-                #  🔥 MAGIC LOGIC HERE 🔥 
+
                 # String ke end se 0-9 tak saare digits uda do
                 clean_name = raw_name.rstrip("0123456789")
 
@@ -350,7 +351,9 @@ class LLM_Engine:
         Returns: Meaningful Response
 
         """
-        system_prompt = f"Describe {name} based on this data. Use 'He/She/They', not 'I'. Data: {json_text}"
+        system_prompt = (f"Describe {name} based on this data. Use 'He/She'"
+                         f" based on their Indian names and use your gut feeling to use the pronouns, "
+                         f"if you are not confident then use general term 'They', not 'I'. Data: {json_text}")
         try:
             response = ollama.generate(model='qwen2.5:3b-instruct', prompt=system_prompt)
             return response['response'].strip()
