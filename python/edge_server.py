@@ -45,7 +45,7 @@ class EdgeBridge:
             os._exit(0)
 
         # 2. Agentic Processing — same as main.py
-        print(f"🤖 Processing: {command}")
+        print(f"Processing: {command}")
         agentic_response = self.app.brain.run_agentic_llm(command)
 
         if agentic_response and "[REGISTER]" in agentic_response:
@@ -61,7 +61,7 @@ class EdgeBridge:
             return
 
         if agentic_response and "I encountered" not in agentic_response:
-            print(f"🤖 Response: {agentic_response}")
+            print(f"Response: {agentic_response}")
 
             # testing
             self.app.mouth.speak(agentic_response)
@@ -69,7 +69,7 @@ class EdgeBridge:
             return
 
         # 3. Fallback
-        print(f"💬 Fallback Chat: {command}")
+        print(f"Fallback Chat: {command}")
         ai_response = self.app.brain.chat(command)
         #testing
         self.app.mouth.speak(ai_response)
@@ -84,7 +84,7 @@ class EdgeBridge:
         poller = zmq.Poller()
         poller.register(socket_audio, zmq.POLLIN)
 
-        print(f"👂 Audio Listening on port {self.AUDIO_PORT}...")
+        print(f"Audio Listening on port {self.AUDIO_PORT}...")
 
         audio_buffer     = []
         is_speaking      = False
@@ -101,14 +101,14 @@ class EdgeBridge:
 
                     if volume > self.SILENCE_THRESHOLD:
                         if not is_speaking:
-                            print("🗣️ Speaking...", end="\r")
+                            print("Speaking...", end="\r")
                             is_speaking = True
                         audio_buffer.append(chunk)
                         last_speech_time = time.time()
 
                 # Silence detect
                 if is_speaking and (time.time() - last_speech_time) > self.SILENCE_DURATION:
-                    print("\n📝 Transcribing...")
+                    print("\nTranscribing...")
                     full_audio = np.concatenate(audio_buffer)
                     resampled  = self._resample_audio(full_audio)
                     text       = self.app.ear.transcribe_raw(resampled)
@@ -118,7 +118,7 @@ class EdgeBridge:
 
                     is_speaking  = False
                     audio_buffer = []
-                    print("👂 Listening...", end="\r")
+                    print("Listening...", end="\r")
 
             except Exception as e:
                 print(f"Audio Error: {e}")
@@ -129,7 +129,7 @@ class EdgeBridge:
         socket_video = context.socket(zmq.SUB)
         socket_video.subscribe(b"")
         socket_video.connect(f"tcp://192.168.1.52:{self.VIDEO_PORT}")
-        print(f"📹 Video Receiver on port {self.VIDEO_PORT}...")
+        print(f"Video Receiver on port {self.VIDEO_PORT}...")
 
         first_frame = True
 
@@ -141,7 +141,7 @@ class EdgeBridge:
 
                 if frame is not None:
                     if first_frame:
-                        print("\n✅ First frame received from Pi!")
+                        print("\nFirst frame received from Pi!")
                         first_frame = False
 
                     # Pi ka frame Vision engine ko do
