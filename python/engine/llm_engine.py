@@ -4,6 +4,7 @@ import re
 import colorama
 import ollama
 import threading
+from datetime import datetime
 
 from python.engine.chat_manager import ChatManager
 from python.engine.dynamic_db_engine import DynamicDBEngine
@@ -13,12 +14,11 @@ from python.engine.music_engine import MusicEngine
 from python.engine.weather_system import Wheather_Engine
 
 
-
 class LLM_Engine:
-    def __init__(self, music_engine=None, vision_engine=None):
+    def __init__(self, music_engine=None, vision_engine=None, reminder_engine=None):
         # Naina System Prompt (Strict Language Enforcer)
         print(colorama.Fore.YELLOW + "[LLM] Initializing Whisper Model...")
-
+        self.reminder_engine = reminder_engine
         # Use provided music engine
         if music_engine:
             self.music = music_engine
@@ -60,7 +60,7 @@ class LLM_Engine:
         """
         It processes the user input and decides which agentic tool is suitable for using it.
         Args:
-            text:  user input
+            text: user input
 
         Returns:
             agent response
@@ -113,12 +113,20 @@ class LLM_Engine:
             - Add to DB: 'Call : Add <Name> <Info>'
             - Update DB: 'Call : Update <Name> <Info>'
             - Final Answer: 'Final Answer : <Reply>'
+            - Reminder Set: 'Call : RemindMe <task> | <YYYY-MM-DD HH:MM>'
+            - Reminder List: 'Call : RemindList check'
+            - Reminder Cancel: 'Call : RemindCancel <task name>'
             """
+
+
+        now = datetime.now()
+        current_time_str = now.strftime("%Y-%m-%d %H:%M")
+        current_date_str = now.strftime("%d %B %Y")
 
         system_context = f"""
             You are Naina. Your Creator is 'Priyadarshan, Prerak, Akit'.  
             {vision_info_str}
-
+        
             TOOL USAGE GUIDELINES (STRICT):
             1. VISUAL AWARENESS: Use the 'VISUAL REALITY' data above. If it says you see someone (e.g., '{visual_user}'), ACKNOWLEDGE THEM. Do not say "I don't see anyone".
             2. VISION TOOL: Use 'Call : Vision check' if user asks "What do you see?" or "Who am I?". Or any sentence that requires visual context.
@@ -127,6 +135,28 @@ class LLM_Engine:
             5. UPDATE: Use 'Call : Update <name> <info>' only for correcting existing info.
             6. MUSIC: Use 'Call : Music <song>' for playback.
             7. WEATHER: Use 'Call : Weather <city>' for forecasts.
+            8. For reminders, STRICTLY use this format:
+            Call : RemindMe <task description> | <YYYY-MM-DD HH:MM>
+
+            EXAMPLES:
+            User: "remind me to call mom at 8 PM today"
+            Output: Call : RemindMe Call Mom | 2026-03-23 20:00
+            
+            User: "meeting with Ankit tomorrow at 10 AM"  
+            Output: Call : RemindMe Meeting with Ankit | 2026-03-24 10:00
+            
+            CURRENT DATE & TIME: {current_time_str} ({current_date_str})
+            REMINDER RULES (STRICT):
+            - "today at 7" → {now.strftime('%Y-%m-%d')} 07:00 (today's date, same day)
+            - "tomorrow at 8 PM" → next date 20:00
+            - "in 2 hours" → current time + 2 hours
+            FORMAT (PIPE REQUIRED):
+            Call : RemindMe <task> | <YYYY-MM-DD HH:MM>
+            
+            REMINDLIST  EXACTLY:
+            Call : RemindList all
+            (no time, no date — give'all')
+            
 
             CRITICAL FALLBACK (General Knowledge):
             If you have a strong gut feeling that user wants to save or remember a person 
@@ -183,6 +213,36 @@ class LLM_Engine:
                         return f"[REGISTER] {extracted_name} | {extracted_info}"
                     else:
                         return "I couldn't understand who to add."
+                elif tool_name == "remindlist":
+                    # Argument ignore karo — pipe wala garbage bhi aa sakta hai
+                    result = self.reminder_engine.get_all()
+                    return f"Your pending reminders:\n{result}"
+                elif tool_name == "remindme":
+                    try:
+                        if "|" not in argument:
+                            return "Please say it like 'remind me to call mom at 8 PM today'."
+
+                        parts = argument.split("|")
+                        task = parts[0].strip()
+                        time_str = parts[1].strip()
+
+                        if not task:
+                            return "What should I remind you about?"
+
+                        remind_at = datetime.strptime(time_str, "%Y-%m-%d %H:%M")
+
+                        # Past time → warn karo but set mat karo
+                        if remind_at < datetime.now():
+                            return f"'{task}' Time has been passed. May I remind you it later?"
+
+                        formatted = self.reminder_engine.add_reminder(task, remind_at)
+                        return f"Done! I'll remind you to '{task}' on {formatted}."
+
+                    except ValueError:
+                        return "Didn't understand the time format. Please use 7' o clock format."
+                    except Exception as e:
+                        print(f"Reminder Error: {e}")
+                        return "Something went wrong."
 
                 elif tool_name == "update":
                     json_info = self.extract_parameters(text)
@@ -252,7 +312,6 @@ class LLM_Engine:
 
             if known_faces:
                 raw_name = known_faces[0]  # Jaise: "Priyadarshan7"
-
 
                 # String ke end se 0-9 tak saare digits uda do
                 clean_name = raw_name.rstrip("0123456789")

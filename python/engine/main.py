@@ -3,6 +3,7 @@ import pygame
 
 from python.engine.assistant_state_manager import AssistantState
 from python.engine.music_engine import MusicEngine
+from python.engine.reminder_engine import ReminderEngine
 from python.engine.weather_system import Wheather_Engine
 from python.engine.stt_engine import STT_Engine
 from python.engine.tts_engine import TTS_Engine
@@ -31,9 +32,9 @@ class Synapse:
         self.ear = STT_Engine()
         self.music = MusicEngine()  # Create ONCE
         self.weather = Wheather_Engine()
-        
+        self.reminder = ReminderEngine(mouth=self.mouth)
         # Pass the music engine to brain
-        self.brain = LLM_Engine(music_engine=self.music, vision_engine=self.vision)  # SHARE the same instance
+        self.brain = LLM_Engine(music_engine=self.music, vision_engine=self.vision, reminder_engine=self.reminder)  # SHARE the same instance
         
         self.MIC_INDEX = 1
         self.manual_music_mode = False
