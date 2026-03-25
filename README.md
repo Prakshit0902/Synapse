@@ -1,4 +1,4 @@
-[Shell Commands](src\Concepts\Shell_Commands.md)
+
 
 # SYNAPSE: Distributed Edge-Cloud AI Assistant Architecture
 **Powering *Naina* | Built from Scratch with Linux Environments**
@@ -18,9 +18,12 @@
 
 Synapse is the robust, multi-threaded distributed architecture built from scratch to power **Naina**, a highly dynamic personal AI assistant. 
 
-Unlike standard API wrappers, Synapse solves the heavy-compute problem of modern LLMs and vision models by splitting the workload: a **Raspberry Pi 3** acts as the sensory edge device (mouth, eyes and ears) written purely in raw poer (C++), while a powerful **Local PC** acts as the brain (inference server) fully leveraging **NVIDIA CUDA** for parallel GPU computing.
+Unlike standard API wrappers, Synapse solves the heavy-compute problemassets/synapse-hld-nodes-based.png of modern LLMs and vision models by splitting the workload: a **Raspberry Pi 3** acts as the sensory edge device (mouth, eyes and ears) written purely in raw poer (C++), while a powerful **Local PC** acts as the brain (inference server) fully leveraging **NVIDIA CUDA** for parallel GPU computing.
 
-<img src=" https://cdn.pixabay.com/photo/2024/04/08/19/56/neural-network-8684318_1280.jpg">
+<img src="https://cdn.pixabay.com/photo/2024/04/08/19/56/neural-network-8684318_1280.jpg">
+
+## High Level Design 
+<img src="assets/synapse-hld-nodes-based.png" width="10000">
 
 ## Key Capabilities
 
