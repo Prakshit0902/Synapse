@@ -23,7 +23,7 @@ Unlike standard API wrappers, Synapse solves the heavy-compute problemassets/syn
 <img src="https://cdn.pixabay.com/photo/2024/04/08/19/56/neural-network-8684318_1280.jpg">
 
 ## High Level Design 
-<img src="assets/synapse-hld-nodes-based.png" width="10000">
+<img src="assets/synapse-hld-nodes-based.png"  width="20000">
 
 ## Key Capabilities
 

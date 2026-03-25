@@ -17,9 +17,9 @@ Release/
 *.pdb
 *.ilk
 *.exe
-vcpkg_installed/
 
 python/engine/reminders.json
+python/engine/known_faces
 # Python Specific 
 python/venv/
 python/synapse_env/
@@ -52,8 +52,8 @@ python/engine/yolov8n.pt
 # --- Temporary Media Files ---
 *.wav
 *.mp3
-*.jpg
-*.png
+
+
 *.avi
 *.mp4
 temp_audio.wav
