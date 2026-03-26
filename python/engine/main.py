@@ -64,6 +64,7 @@ class Synapse:
 
                 if command:
                     print(f"[Heard] : {command}")
+                    t_start = time.perf_counter() # stopwatch
 
                     if self.check_exit(command.lower()):
                         self.vision.close_camera()
@@ -88,12 +89,17 @@ class Synapse:
                     if agentic_response and "I encountered" not in agentic_response:
                         print(f"[Response] : {agentic_response}")
                         self.mouth.speak(agentic_response)
+                        t_end = time.perf_counter()
+                        processing_time = (t_end - t_start) * 1000
+                        print(colorama.Fore.MAGENTA + f" [PC Processing Time]: {processing_time:.2f} ms")
                         continue
 
                     # Fallback
                     print(f"[Fallback Chat] : {command}")
                     ai_response = self.brain.chat(command)
                     self.mouth.speak(ai_response)
+                    t_end = time.perf_counter()
+                    print(f"Time taken: {(t_end - t_start) * 1000} seconds")
 
             except KeyboardInterrupt:
                 print("\nStopping...")
