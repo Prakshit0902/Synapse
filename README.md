@@ -65,6 +65,40 @@ Building this wasn't a walk in the park. Bridging low-level C++ with modern Pyth
 * **Episode 3: The GPU Brain Transplant.** Managing VRAM limits and tuning the Whisper -> Qwen 2.5 -> Kokoro TTS pipeline for sub-second conversational speeds using CUDA.
 * **Episode 4: Memory & Vision.** The transition from a tedious dynamic face-saving approach to a rock-solid hardcoded InsightFace directory, and plugging in ChromaDB for permanent memory.
 
+
+##  System Performance & Telemetry (Local Inference)
+
+Synapse is built with a heavy focus on **Low-Latency Edge-to-Core Architecture**. All AI models (STT, LLM, TTS, Vision) run locally on the core PC, ensuring 100% data privacy without relying on cloud APIs.
+
+Here is the micro-profiling breakdown of a standard voice interaction loop.
+
+### 1. Software Processing Pipeline
+*Metrics collected via `time.perf_counter()` on the core processing server.*
+
+| Sub-System | Technology Stack | Average Latency | Notes |
+| :--- | :--- | :--- | :--- |
+| **Speech-to-Text (STT)** | Faster-Whisper (CUDA) | **~700 - 1000 ms** | Variable based on sentence length. |
+| **Agentic Brain (LLM)** | Local LLM Engine | **~500 - 2500 ms** | ~500ms for direct Q&A; up to 2.5s for complex DB searches. |
+| **Text-to-Speech (TTS)** | Kokoro ONNX (CPU) | **~600 - 900 ms** | Time to First Byte (TTFB) using audio streaming. |
+
+### 2. End-to-End Acoustic Latency (Real-World)
+While software processing is highly optimized, real-world physical latency includes hardware and network propagation. 
+
+* **Total Physical Turnaround Time: ~4.5 to 5.0 Seconds**
+*(Measured from the moment the user stops speaking to the first audio output from the Raspberry Pi speaker).*
+
+**Where does the extra time go?**
+- **VAD Pause Threshold:** ~0.5s - 0.8s (Mic waits to ensure the user has completely finished speaking).
+- **Network Routing:** ~0.1s (TCP socket transmission between Raspberry Pi and Core PC).
+- **Hardware Buffering:** ~0.2s (ALSA sound card and Pygame audio buffer initialization).
+
+### Architectural Highlights
+* **Perceived Latency Optimization:** To prevent users from waiting for the full LLM response to generate, the TTS engine uses **Sentence-by-Sentence Chunking**. As soon as the LLM generates the first sentence (~390ms), the TTS begins streaming the audio. The rest of the LLM generation happens asynchronously in the background.
+* **Fallback Mechanism:** The Agentic framework dynamically measures vector-search distances. If a database match is too weak (`Distance > 1.5`), it smoothly falls back to its base General Knowledge seamlessly without crashing.
+
+---
+**Proof of Execution (Telemetry Logs):**
+ <img src="assets/performance-metrics.jpeg">
 ## 🛣️ Roadmap
 
 - [ ] Publish comprehensive latency and resource utilization metrics (RPi CPU vs. PC GPU/VRAM).

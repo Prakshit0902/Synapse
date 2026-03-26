@@ -1,4 +1,6 @@
 import threading
+
+import colorama
 import pygame
 import io
 import soundfile as sf
@@ -210,8 +212,10 @@ class TTS_Engine:
 
     def speak(self, text):
         def simple_gen(): yield text
-
+        start_time = time.perf_counter()
         self.speak_stream(simple_gen(), target="local")
+        end_time = time.perf_counter()
+        print(colorama.Fore.LIGHTGREEN_EX + f"[TTS Time] : {(end_time - start_time) * 1000:.2f} ms")
 
     def speak_for_rpi(self, text):
         def simple_gen(): yield text

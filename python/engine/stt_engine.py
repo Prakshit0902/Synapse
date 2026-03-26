@@ -164,11 +164,11 @@ class STT_Engine:
         # Noise adjust
             self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
             print(colorama.Fore.YELLOW + "\n[Listening]...", end="", flush=True)
-            start_time = time.perf_counter()
 
             try:
                 # Sunna shuru karo
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=None)
+                start_time = time.perf_counter()
 
                 # Raw Audio Processing (Fastest Method)
                 raw_data = audio.get_raw_data(convert_rate=16000, convert_width=2)

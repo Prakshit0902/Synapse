@@ -59,6 +59,7 @@ class Synapse:
                     continue
 
                 state.set_listening(True)
+
                 audio, command = self.ear.listen()
                 state.set_listening(False)
 
@@ -89,7 +90,9 @@ class Synapse:
 
                     if agentic_response and "I encountered" not in agentic_response:
                         print(f"[Response] : {agentic_response}")
+
                         self.mouth.speak(agentic_response)
+
                         main_end_time = time.perf_counter()
                         processing_time = (main_end_time - main_start_time) * 1000
                         llm_end_time = time.perf_counter()
