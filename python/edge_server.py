@@ -1,3 +1,4 @@
+import colorama
 import zmq
 import numpy as np
 import threading
@@ -36,12 +37,16 @@ class EdgeBridge:
         if not command:
             return
 
-        print(f"\n🎤 Edge Heard: {command}")
+        print(f"\n [Edge Heard]: {command}")
+        start_time = time.perf_counter()
         command_lower = command.lower()
 
         # 1. Exit Check
         if self.app.check_exit(command_lower):
             self.app.mouth.speak_for_rpi("Goodbye! Shutting down.")
+            end_time = time.perf_counter()
+            total_time = end_time - start_time
+            print(colorama.Fore.MAGENTA + f" [Total Time]: {total_time:.2f} ms")
             os._exit(0)
 
         # 2. Agentic Processing — same as main.py
@@ -66,6 +71,9 @@ class EdgeBridge:
             # testing
             self.app.mouth.speak(agentic_response)
             self.app.mouth.speak_for_rpi(agentic_response)
+            end_time = time.perf_counter()
+            total_time = end_time - start_time
+            print(colorama.Fore.MAGENTA + f" [Total Time]: {total_time:.2f} ms")
             return
 
         # 3. Fallback
@@ -74,6 +82,10 @@ class EdgeBridge:
         #testing
         self.app.mouth.speak(ai_response)
         self.app.mouth.speak_for_rpi(ai_response)
+        end_time = time.perf_counter()
+        total_time = end_time - start_time
+        print(colorama.Fore.MAGENTA + f" [Total Time]: {total_time:.2f} ms")
+
 
     def audio_listener(self):
         context      = zmq.Context()
