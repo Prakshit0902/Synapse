@@ -68,10 +68,7 @@ int main(int argc, char* argv[]) {
         recorder.startRecording();
         });
 
-    auto start_time = std ::chrono :: high_resolution_clock::now();
-    auto end_time = std ::chrono :: high_resolution_clock::now();
-    auto total_round_trip_time = std ::chrono:: duration_cast <std ::chrono ::milliseconds>(end_time -start_time).count();
-	std::cout << "Total Round Trip Time" << total_round_trip_time << " milliseconds" << std::endl;
+
 
     std::cout << "[OK] System Listening and Streaming Audio continuously..." << std::endl;
 

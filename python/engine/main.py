@@ -64,7 +64,7 @@ class Synapse:
 
                 if command:
                     print(f"[Heard] : {command}")
-                    start_time = time.perf_counter() # stopwatch
+                    main_start_time = time.perf_counter() # stopwatch
 
                     if self.check_exit(command.lower()):
                         self.vision.close_camera()
@@ -72,6 +72,7 @@ class Synapse:
                         os._exit(0)
 
                     print(f"[Processing] : {command}")
+                    llm_start_time = time.perf_counter()
                     agentic_response = self.brain.run_agentic_llm(command)
 
                     if agentic_response and "[REGISTER]" in agentic_response:
@@ -89,17 +90,24 @@ class Synapse:
                     if agentic_response and "I encountered" not in agentic_response:
                         print(f"[Response] : {agentic_response}")
                         self.mouth.speak(agentic_response)
-                        end_time = time.perf_counter()
-                        processing_time = (start_time - end_time) * 1000
+                        main_end_time = time.perf_counter()
+                        processing_time = (main_end_time - main_start_time) * 1000
+                        llm_end_time = time.perf_counter()
+                        llm_processing_time = (llm_end_time - llm_start_time) * 1000
+                        print(colorama.Fore.LIGHTBLUE_EX + f" [LLM Processing Time]: {llm_processing_time:.2f} ms")
                         print(colorama.Fore.MAGENTA + f" [PC Processing Time]: {processing_time:.2f} ms")
                         continue
 
                     # Fallback
                     print(f"[Fallback Chat] : {command}")
                     ai_response = self.brain.chat(command)
+                    llm_end_time = time.perf_counter()
+                    llm_processing_time = (llm_end_time - llm_start_time) * 1000
+                    print(colorama.Fore.LIGHTBLUE_EX + f" [LL Processing Time]: {llm_processing_time:.2f} ms")
+
                     self.mouth.speak(ai_response)
-                    end_time = time.perf_counter()
-                    processing_time = (end_time - start_time) * 1000
+                    main_end_time = time.perf_counter()
+                    processing_time = (main_end_time - main_start_time) * 1000
                     print(colorama.Fore.MAGENTA + f" [PC Processing Time]: {processing_time:.2f} ms")
 
             except KeyboardInterrupt:

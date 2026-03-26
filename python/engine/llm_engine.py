@@ -171,7 +171,7 @@ class LLM_Engine:
 
         prompt = f"{system_context}\n{tools_desc}\nUser asked: \"{text}\"\nDECIDE TOOL. OUTPUT FORMAT ONLY."
 
-        print(f"Agent Thinking (Vision Aware)...")
+        print(f"Agent Thinking ...")
 
         try:
             raw_response = ollama.generate(model='qwen2.5:3b-instruct', prompt=prompt, options={'temperature': 0.1})
