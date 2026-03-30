@@ -25,6 +25,13 @@ Unlike standard API wrappers, Synapse solves the heavy-compute problemassets/syn
 ## High Level Design 
 <img src="assets/synapse-hld-nodes-based.png"  width="20000">
 
+## **Minimum System Requirements**
+Before you try to clone and run it locally, let me be clear this project needs minimum these specifications to run on your local machine
+* Minimum 8 GB VRam 3060 GPU, preferably 4060
+* 16 GB Ram
+* i7 CPU of 12th Gen or later. Google it's an equivalent for AMD
+* Please download cuda to run it. I'll upload a full procedure **How To SETUP** in future. 
+
 ## Key Capabilities
 
 * **Real-Time Edge Perception:** RPi 3 directly captures video (V2 Camera) and audio, applies raw OpenCV MPEG compression, and streams it over LAN with nearly zero latency.
@@ -105,7 +112,7 @@ While software processing is highly optimized, real-world physical latency inclu
 <img src="assets/gpu.png">
 ## 🛣️ Roadmap
 
-- [ ] Publish comprehensive latency and resource utilization metrics (RPi CPU vs. PC GPU/VRAM).
+- [X] Publish comprehensive latency and resource utilization metrics (RPi CPU vs. PC GPU/VRAM).
 - [ ] Make a Docker file to run this AI in a local environment, so you don't go through dependency hell.
 - [ ] Intensively documenting every file.
 - [ ] Make script file for running as background service.
