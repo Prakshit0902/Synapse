@@ -99,6 +99,10 @@ While software processing is highly optimized, real-world physical latency inclu
 ---
 **Proof of Execution (Telemetry Logs):**
  <img src="assets/performance-metrics.jpeg">
+
+## Resources Usage
+* **GPU** 
+<img src="assets/gpu.png">
 ## 🛣️ Roadmap
 
 - [ ] Publish comprehensive latency and resource utilization metrics (RPi CPU vs. PC GPU/VRAM).
