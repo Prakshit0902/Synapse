@@ -373,7 +373,7 @@ class LLM_Engine:
             reply = response['message']['content']
         except Exception as e:
             print(f"Chat Gen Error: {e}")
-            reply = "I'm having trouble thinking right now."
+            reply = "I'm having trouble thinking right now. I think the LLM is not responding."
 
         # 3. Save to history
         self.history.append({"role": "assistant", "content": reply})
@@ -381,6 +381,15 @@ class LLM_Engine:
         self.chat_db.add_message(self.current_session_id, "assistant", reply)
 
         # 4. Background Fact Extraction
+
+        # Token per second report it uses internal clock
+        eval_count = response.get('eval_count', 0)
+        eval_duration = response.get('eval_duration', 0)
+        if eval_duration > 0:
+            eval_duration_s = eval_duration / 1e9
+            exact_tps = eval_count / eval_duration_s
+            print(f"Exact TPS: {exact_tps:.2f}")
+
         save_thread = threading.Thread(target=self.save_to_memory, args=(user_input, self.current_user))
         save_thread.start()
 

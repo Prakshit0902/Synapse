@@ -98,7 +98,10 @@ While software processing is highly optimized, real-world physical latency inclu
 - **VAD Pause Threshold:** ~0.5s - 0.8s (Mic waits to ensure the user has completely finished speaking).
 - **Network Routing:** ~0.1s (TCP socket transmission between Raspberry Pi and Core PC).
 - **Hardware Buffering:** ~0.2s (ALSA sound card and Pygame audio buffer initialization).
-
+### 3. Token/sec generated form LLM
+* By the internal clock counter of LLM we derived the tokens generated per second are around 105. Here is the log reference.
+<img src ="assets/token_per_min.png" >
+* As we know, **1 English Word =~ 3.1 tokens**. So it makes **~80 words** per second.
 ### Architectural Highlights
 * **Perceived Latency Optimization:** To prevent users from waiting for the full LLM response to generate, the TTS engine uses **Sentence-by-Sentence Chunking**. As soon as the LLM generates the first sentence (~390ms), the TTS begins streaming the audio. The rest of the LLM generation happens asynchronously in the background.
 * **Fallback Mechanism:** The Agentic framework dynamically measures vector-search distances. If a database match is too weak (`Distance > 1.5`), it smoothly falls back to its base General Knowledge seamlessly without crashing.
