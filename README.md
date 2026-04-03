@@ -118,9 +118,9 @@ While software processing is highly optimized, real-world physical latency inclu
 
 ## 🛣️ Roadmap
 
-- [X] Publish comprehensive latency and resource utilization metrics (RPi CPU vs. PC GPU/VRAM).
+- [x] Publish comprehensive latency and resource utilization metrics (RPi CPU vs. PC GPU/VRAM).
 - [ ] Make a Docker file to run this AI in a local environment, so you don't go through dependency hell.
 - [ ] Intensively documenting every file.
-- [ ] Make script file for running as background service.
+- [x] Make a script/bat file for running as background service.
 ---
-*Built with grit, C++, and lots of tea ☕.*
+*Built with grit, C++,python and lots of tea ☕.*
