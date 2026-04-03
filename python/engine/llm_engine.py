@@ -388,7 +388,7 @@ class LLM_Engine:
         if eval_duration > 0:
             eval_duration_s = eval_duration / 1e9
             exact_tps = eval_count / eval_duration_s
-            print(f"Exact TPS: {exact_tps:.2f}")
+            print(f"[Exact TPS] : {exact_tps:.2f}")
 
         save_thread = threading.Thread(target=self.save_to_memory, args=(user_input, self.current_user))
         save_thread.start()

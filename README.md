@@ -113,6 +113,8 @@ While software processing is highly optimized, real-world physical latency inclu
 ## Resources Usage
 * **GPU** 
 <img src="assets/gpu.png">
+* **CPU**
+<img src="assets/cpu.png">
 
 ## 🛣️ Roadmap
 

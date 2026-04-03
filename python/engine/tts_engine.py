@@ -13,6 +13,8 @@ import numpy as np
 import queue
 import re
 
+
+
 # MONKEY PATCH (Standard Fix)
 if not hasattr(np, "original_load"):
     np.original_load = np.load
@@ -53,6 +55,7 @@ class TTS_Engine:
     def _ensure_models_exist(self):
         files = ["kokoro-v0_19.onnx", "voices.bin"]
         base_url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/"
+
         for file in files:
             if not os.path.exists(file):
                 print(f"Downloading {file}...")
