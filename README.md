@@ -58,7 +58,7 @@ The system is strictly divided into two independent nodes communicating over a L
 ###  Network & Shell Orchestration
 * **ZeroMQ (ZMQ):** Used for asynchronous, high-throughput, low-latency Inter-Process Communication (IPC) and network socket streaming between the C++ client and Python server.
 * **Bash/Shell Scripting:** The entire startup sequence, network binding, environment variable management, and process daemonization on both the RPi and the  server are heavily automated using pipelines of processing.
-## 📹 Demo
+##  Demo
 * Dropping soon
 
 ## The Developer Diaries: Building Synapse
@@ -110,6 +110,7 @@ While software processing is highly optimized, real-world physical latency inclu
 ## Resources Usage
 * **GPU** 
 <img src="assets/gpu.png">
+
 ## 🛣️ Roadmap
 
 - [X] Publish comprehensive latency and resource utilization metrics (RPi CPU vs. PC GPU/VRAM).
