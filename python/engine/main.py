@@ -8,6 +8,8 @@ from python.engine.weather_system import Wheather_Engine
 from python.engine.stt_engine import STT_Engine
 from python.engine.tts_engine import TTS_Engine
 from python.engine.llm_engine import LLM_Engine
+from python.engine.event_bus import broadcast_state
+
 
 import os
 
@@ -20,8 +22,51 @@ from python.engine.vision_pro import Vision_Pro
 import colorama
 import time
 
-colorama.init(autoreset=True)
+import queue
+import asyncio
+from fastapi import FastAPI, WebSocket
 
+
+import uvicorn
+import json
+app = FastAPI()
+
+
+
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("Frontend Connected!")
+
+    # Ek background task jo Queue se message nikal kar UI ko bhejega
+    async def send_updates_to_ui():
+        while True:
+            if not UI_STATE_QUEUE.empty():
+                msg = UI_STATE_QUEUE.get()
+                await websocket.send_json(msg)
+            await asyncio.sleep(0.05)  # CPU ko aaram dene ke liye thoda delay
+
+    # Task ko background mein chalu kar do
+    asyncio.create_task(send_updates_to_ui())
+
+    try:
+        while True:
+            data = await websocket.receive_text()
+            user_data = json.loads(data)
+            user_text = user_data.get("text")
+
+            # 1. UI ko batao ki humne sun liya
+            broadcast_state("user_text", {"text": user_text})
+            broadcast_state("state", {"status": "thinking"})
+
+            # 2. Apna LLM aur TTS trigger karo
+            # (Tere pichle classes ka logic yahan aayega)
+            # naina_engine.chat(user_text)
+
+    except Exception as e:
+        print(f"[UI Disconnected] : {e}")
 
 class Synapse:
     def __init__(self):
@@ -50,6 +95,9 @@ class Synapse:
             return True
         return False
 
+
+
+
     def start(self):
         state = AssistantState()
         while True:
@@ -73,6 +121,7 @@ class Synapse:
                         os._exit(0)
 
                     print(f"[Processing] : {command}")
+                    broadcast_state("state", {"state": "agent_thinking"})
                     llm_start_time = time.perf_counter()
                     agentic_response = self.brain.run_agentic_llm(command)
 
@@ -280,9 +329,25 @@ class Synapse:
             self.mouth.speak("Camera error.")
 
 
+
+
 if __name__ == "__main__":
+    import threading
+    import uvicorn
+
     try:
-        app = Synapse()
-        app.start()
+        # 1. Initialize Synapse (AI Engine)
+        synapse_app = Synapse()
+
+        # 2. Start AI Engine in a Background Thread
+        print(colorama.Fore.YELLOW + "Starting AI Brain in Background...")
+        ai_thread = threading.Thread(target=synapse_app.start, daemon=True)
+        ai_thread.start()
+
+        # 3. Start FastAPI Server on the Main Thread (Blocking)
+        print(colorama.Fore.GREEN + "Starting API Server on port 8000...")
+        # Use 'main:app' assuming this file is named main.py. Change it if needed.
+        uvicorn.run(app, host="0.0.0.0", port=8000)
+
     except KeyboardInterrupt:
         print(f"Interrupted by user")

@@ -130,7 +130,9 @@ import numpy as np
 import time
 import colorama
 
-from python.engine.tts_engine import TTS_Engine
+
+
+from python.engine.event_bus import broadcast_state
 
 # Colors init
 colorama.init(autoreset=True)
@@ -164,6 +166,7 @@ class STT_Engine:
         # Noise adjust
             self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
             print(colorama.Fore.YELLOW + "\n[Listening]...", end="", flush=True)
+            broadcast_state("state", {"state":"listening"})
 
             try:
                 # Sunna shuru karo

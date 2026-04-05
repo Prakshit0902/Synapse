@@ -12,7 +12,7 @@ import time
 import numpy as np
 import queue
 import re
-
+from python.engine.event_bus import broadcast_state
 
 
 # MONKEY PATCH (Standard Fix)
@@ -152,6 +152,7 @@ class TTS_Engine:
 
             try:
                 print(f"[Naina] : '{text_segment}'")
+                broadcast_state("naina_text", {"text":text_segment})
                 pygame.mixer.music.load(audio_data)
                 pygame.mixer.music.play()
                 while pygame.mixer.music.get_busy():
