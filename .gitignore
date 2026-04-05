@@ -20,6 +20,7 @@ Release/
 
 python/engine/reminders.json
 python/engine/known_faces
+
 # Python Specific 
 python/venv/
 python/synapse_env/
@@ -27,6 +28,11 @@ python/synapse_env/
 *.pyc
 *.pyo
 *.pyd
+
+# tsx wali
+frontend/visualizer-app/.next
+frontend/visualizer-app/node_modules
+
 
 # Database files (Ye lock hoti hain)
 *.db
