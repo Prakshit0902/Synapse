@@ -152,7 +152,8 @@ class TTS_Engine:
 
             try:
                 print(f"[Naina] : '{text_segment}'")
-                broadcast_state("naina_text", {"text":text_segment})
+                broadcast_state("state", {"status": "speaking"})
+                broadcast_state("naina_text", {"text": text_segment})
                 pygame.mixer.music.load(audio_data)
                 pygame.mixer.music.play()
                 while pygame.mixer.music.get_busy():
@@ -163,6 +164,7 @@ class TTS_Engine:
             except Exception as e:
                 print(f"Playback Error: {e}")
         TTS_Engine._is_speaking = False
+        broadcast_state("state", {"status": "idle"})
 
     def _stream_player_for_rpi(self, audio_queue):
         """EDGE (C++): Sends raw bytes to C++ TCP Socket"""

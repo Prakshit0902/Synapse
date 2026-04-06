@@ -66,52 +66,6 @@ class DynamicDBEngine:
             return False
 
 
-    # def find_user(self, query):
-    #     print(f"🕵️ [DB Search] Query: '{query}'")
-    #
-    #     # STRATEGY 1: EXACT ID LOOKUP (Fastest)
-    #     # Agar query hi naam hai (e.g. "priyadarshan"), to pehle ID check karo
-    #     clean_id = query.strip().lower()
-    #
-    #     try:
-    #         id_result = self.collection.get(ids=[clean_id])
-    #         if id_result['documents'] and len(id_result['documents']) > 0:
-    #             print(f"🎯 [DB] Found via Exact ID Match: {clean_id}")
-    #             return id_result['documents'][0]
-    #     except:
-    #         pass  # ID match fail hua to ro mat, aage badho
-    #
-    #     # STRATEGY 2: SEMANTIC VECTOR SEARCH (The Real Magic)
-    #     # Agar exact naam nahi mila, ya query complex hai (e.g. "Who created you?")
-    #     try:
-    #         print(f"🤖 [DB] Trying Vector Search for: '{query}'")
-    #         results = self.collection.query(
-    #             query_texts=[query],
-    #             n_results=1
-    #         )
-    #
-    #         # Result validation
-    #         if not results['documents'] or len(results['documents'][0]) == 0:
-    #             print("❌ [DB] No semantic match found.")
-    #             return None
-    #
-    #         found_info = results['documents'][0][0]
-    #         distance = results['distances'][0][0]
-    #
-    #         print(f"✅ [DB] Semantic Match Found! (Distance: {distance}) -> {found_info}")
-    #
-    #         # Distance Jitna kam, utna accurate.
-    #         # 1.5 se neeche hai to matlab milta julta hai.
-    #         if distance < 1.6:
-    #             return found_info
-    #         else:
-    #             print("⚠️ [DB] Match too weak (Distance > 1.6). Ignoring.")
-    #             return None
-    #
-    #     except Exception as e:
-    #         print(f"❌ [DB] Critical Search Error: {e}")
-    #         return None
-
     def find_user(self, name):
         clean_query = name.strip().lower()
         print(f"[DB Search] Query: '{clean_query}'")

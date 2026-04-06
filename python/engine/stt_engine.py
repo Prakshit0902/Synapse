@@ -166,7 +166,7 @@ class STT_Engine:
         # Noise adjust
             self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
             print(colorama.Fore.YELLOW + "\n[Listening]...", end="", flush=True)
-            broadcast_state("state", {"state":"listening"})
+            broadcast_state("state", {"status": "listening"})
 
             try:
                 # Sunna shuru karo

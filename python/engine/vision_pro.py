@@ -315,6 +315,9 @@ class Vision_Pro:
         except Exception:
             return None
 
+    def check_person_exists(self, final_name):
+        pass
+
 
 if __name__ == "__main__":
     v = Vision_Pro()

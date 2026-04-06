@@ -1,7 +1,10 @@
+import signal
+
 import pyaudio
 import pygame
 
 from python.engine.assistant_state_manager import AssistantState
+from python.engine.dynamic_db_engine import DynamicDBEngine
 from python.engine.music_engine import MusicEngine
 from python.engine.reminder_engine import ReminderEngine
 from python.engine.weather_system import Wheather_Engine
@@ -70,7 +73,7 @@ async def websocket_endpoint(websocket: WebSocket):
 class Synapse:
     def __init__(self):
         print(colorama.Fore.CYAN + f"Initializing Synapse AI Engine...")
-
+        self.db = DynamicDBEngine()
         self.vision = Vision_Pro()
         self.mouth = TTS_Engine()
         self.ear = STT_Engine()
@@ -112,15 +115,17 @@ class Synapse:
 
                 if command:
                     print(f"[Heard] : {command}")
+                    broadcast_state("user_text", {"text": command})
                     main_start_time = time.perf_counter() # stopwatch
 
                     if self.check_exit(command.lower()):
                         self.vision.close_camera()
                         self.mouth.speak("Goodbye!")
-                        os._exit(0)
+                        os.kill(os.getpid(), signal.SIGINT)
+                        return
 
                     print(f"[Processing] : {command}")
-                    broadcast_state("state", {"state": "agent_thinking"})
+                    broadcast_state("state", {"status": "thinking"})
                     llm_start_time = time.perf_counter()
                     agentic_response = self.brain.run_agentic_llm(command)
 
@@ -263,7 +268,7 @@ class Synapse:
 
         #   EXISTING USER CHECK
         # Vision engine check: Kya ye naam pehle se DB me hai?
-        existing_info = self.vision.check_person_exists(final_name)
+        existing_info = self.db.check_person_exists(final_name)
 
         if existing_info:
             current_details = existing_info.get("details", "No details provided")
@@ -335,17 +340,16 @@ if __name__ == "__main__":
     import uvicorn
 
     try:
-        # 1. Initialize Synapse (AI Engine)
+        # Initialize Synapse (AI Engine)
         synapse_app = Synapse()
 
-        # 2. Start AI Engine in a Background Thread
+        # Start AI Engine in a Background Thread
         print(colorama.Fore.YELLOW + "Starting AI Brain in Background...")
         ai_thread = threading.Thread(target=synapse_app.start, daemon=True)
         ai_thread.start()
 
-        # 3. Start FastAPI Server on the Main Thread (Blocking)
+        # Start FastAPI Server on the Main Thread (Blocking)
         print(colorama.Fore.GREEN + "Starting API Server on port 8000...")
-        # Use 'main:app' assuming this file is named main.py. Change it if needed.
         uvicorn.run(app, host="0.0.0.0", port=8000)
 
     except KeyboardInterrupt:
