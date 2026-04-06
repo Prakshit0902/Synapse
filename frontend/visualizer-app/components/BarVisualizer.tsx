@@ -228,7 +228,7 @@ export default function BarVisualizerDemo() {
           />
         ))}
 
-        {/* Main box */}
+    {/* Main box */}
         <motion.div
           animate={{ boxShadow: glow }}
           transition={{ duration: 0.6 }}
@@ -243,11 +243,36 @@ export default function BarVisualizerDemo() {
             gap: 8,
             position: "relative",
             zIndex: 1,
+            overflow: "hidden" 
           }}
         >
-          {heights.map((h, i) => (
-            <Bar key={i} height={h} color={color} />
-          ))}
+          {}
+          <motion.div
+            animate={{ 
+              color: color,
+              textShadow: `0px 0px 12px ${color}80` 
+            }}
+            transition={{ duration: 0.5 }}
+            style={{
+              position: "absolute",
+              top: 24, 
+              fontSize: 13,
+              fontWeight: 600,
+              letterSpacing: "0.4em",
+              textTransform: "uppercase",
+              zIndex: 0, 
+              opacity: state === "idle" ? 0.3 : 0.9, 
+            }}
+          >
+            Naina
+          </motion.div>
+
+          {}
+          <div style={{ display: "flex", gap: 8, zIndex: 2 }}>
+            {heights.map((h, i) => (
+              <Bar key={i} height={h} color={color} />
+            ))}
+          </div>
         </motion.div>
 
         {/* Label */}
