@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
 type AgentState = "idle" | "connecting" | "listening" | "thinking" | "speaking";
-
 const BAR_COUNT = 5;
 
 const STATE_CONFIG: Record<AgentState, { color: string; glow: string; label: string; profile: { min: number; max: number; speed: number }[] }> = {
@@ -122,20 +121,70 @@ function StateBtn({ state, active, onClick }: { state: AgentState; active: boole
 }
 
 export default function BarVisualizerDemo() {
-  const [state, setState] = useState<AgentState>("speaking");
-  const [autoCycle, setAutoCycle] = useState(false);
+  const [state, setState] = useState<AgentState>("idle");
   const heights = useBarHeights(state);
   const { color, glow, label } = STATE_CONFIG[state];
 
+  // Naye States text dikhane ke liye
+  const [userText, setUserText] = useState("");
+  const [nainaText, setNainaText] = useState("");
+  const wsRef = useRef<WebSocket | null>(null);
+
   useEffect(() => {
-    if (!autoCycle) return;
-    let i = STATE_ORDER.indexOf(state);
-    const id = setInterval(() => {
-      i = (i + 1) % STATE_ORDER.length;
-      setState(STATE_ORDER[i]);
-    }, 2500);
-    return () => clearInterval(id);
-  }, [autoCycle]);
+
+    wsRef.current = new WebSocket('ws://localhost:8000/ws');
+    setState("connecting");
+
+    wsRef.current.onopen = () => {
+      console.log("Connected to Synapse Engine!");
+      setState("idle");
+    };
+
+
+   wsRef.current.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        // 🔍 DEBUG LOG: Python ne exact kya bheja?
+        console.log("📥 Received from Python:", data);
+
+        if (data.type === "state") {
+          // Status check karo aur safe type casting karo
+          const newStatus = data.status || data.state; // Backup just in case
+
+          if (newStatus) {
+            console.log("🔄 Updating UI State to:", newStatus);
+            setState(newStatus as AgentState);
+          }
+
+          if (newStatus === "listening") {
+              setUserText(""); // Clear previous conversation
+              setNainaText("");
+          }
+        }
+        else if (data.type === "user_text") {
+          console.log("📝 Updating User Text:", data.text);
+          setUserText(data.text);
+        }
+        else if (data.type === "naina_text") {
+          console.log("🔊 Appending Naina Text:", data.text);
+          setNainaText((prev) => prev + " " + data.text);
+        }
+
+      } catch (error) {
+        console.error("WebSocket Message Error:", error);
+      }
+    };
+
+    wsRef.current.onclose = () => {
+      console.log("Disconnected from Synapse Engine");
+      setState("idle");
+    };
+
+    return () => {
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, []);
 
   return (
     <div style={{
@@ -151,19 +200,18 @@ export default function BarVisualizerDemo() {
       padding: "60px 24px",
     }}>
 
-      {/* Title */}
-      <div style={{ textAlign: "center" }}>
-        <p style={{ fontSize: 11, letterSpacing: "0.2em", color: "#333", textTransform: "uppercase", margin: "0 0 10px" }}>
-          Audio Visualizer
+      {}
+      <div style={{ textAlign: "center", height: "80px", maxWidth: "600px" }}>
+        <p style={{ color: "#06b6d4", fontSize: "16px", margin: "0 0 10px" }}>
+            {userText && `You: "${userText}"`}
         </p>
-        <h1 style={{ fontSize: "clamp(24px, 5vw, 44px)", fontWeight: 400, letterSpacing: "-0.03em", margin: 0, color: "#ddd" }}>
-          BarVisualizer
-        </h1>
+        <p style={{ color: "#f97316", fontSize: "18px", margin: 0, fontWeight: "bold" }}>
+            {nainaText && `Naina: ${nainaText}`}
+        </p>
       </div>
 
-      {/* Single Box */}
+      {}
       <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-
         {/* Orbit rings */}
         {[1.7, 2.4, 3.2].map((scale, i) => (
           <motion.div
@@ -227,29 +275,6 @@ export default function BarVisualizerDemo() {
           </motion.p>
         </AnimatePresence>
       </div>
-
-      {/* Buttons */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 20 }}>
-        {STATE_ORDER.map((s) => (
-          <StateBtn key={s} state={s} active={state === s}
-            onClick={() => { setState(s); setAutoCycle(false); }} />
-        ))}
-        <motion.button
-          onClick={() => setAutoCycle((v) => !v)}
-          whileTap={{ scale: 0.95 }}
-          style={{
-            padding: "7px 18px", borderRadius: 99,
-            border: `1.5px solid ${autoCycle ? "#888" : "#2a2a2a"}`,
-            background: autoCycle ? "#88888825" : "transparent",
-            color: autoCycle ? "#aaa" : "#555",
-            fontSize: 13, fontFamily: "inherit", cursor: "pointer",
-            transition: "all 0.3s", letterSpacing: "0.03em", outline: "none",
-          }}
-        >
-          {autoCycle ? "⏸ Pause" : "▶ Auto"}
-        </motion.button>
-      </div>
-
     </div>
   );
 }
