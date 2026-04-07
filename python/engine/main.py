@@ -48,9 +48,9 @@ async def websocket_endpoint(websocket: WebSocket):
             if not UI_STATE_QUEUE.empty():
                 msg = UI_STATE_QUEUE.get()
                 await websocket.send_json(msg)
-            await asyncio.sleep(0.05)  # CPU ko aaram dene ke liye thoda delay
+            await asyncio.sleep(0.05)
 
-    # Task ko background mein chalu kar do
+
     asyncio.create_task(send_updates_to_ui())
 
     try:
@@ -59,13 +59,10 @@ async def websocket_endpoint(websocket: WebSocket):
             user_data = json.loads(data)
             user_text = user_data.get("text")
 
-            # 1. UI ko batao ki humne sun liya
+
             broadcast_state("user_text", {"text": user_text})
             broadcast_state("state", {"status": "thinking"})
 
-            # 2. Apna LLM aur TTS trigger karo
-            # (Tere pichle classes ka logic yahan aayega)
-            # naina_engine.chat(user_text)
 
     except Exception as e:
         print(f"[UI Disconnected] : {e}")
@@ -119,8 +116,15 @@ class Synapse:
                     main_start_time = time.perf_counter() # stopwatch
 
                     if self.check_exit(command.lower()):
-                        self.vision.close_camera()
                         self.mouth.speak("Goodbye!")
+                        while TTS_Engine._is_speaking:
+                            time.sleep(0.1)
+                        try :
+                            self.vision.close_camera()
+                            time.sleep(2.5)
+                        except Exception as e:
+                            print(e)
+                        print("Releasing all resources")
                         os.kill(os.getpid(), signal.SIGINT)
                         return
 

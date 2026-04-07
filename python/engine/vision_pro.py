@@ -284,8 +284,9 @@ class Vision_Pro:
 
     def close_camera(self):
         self.is_running = False
-        time.sleep(0.1)
+        time.sleep(0.5)
         if self.cap is not None and self.cap.isOpened():
+            self.cap.read()
             self.cap.release()
         cv2.destroyAllWindows()
         print("Camera Resource Released.")
