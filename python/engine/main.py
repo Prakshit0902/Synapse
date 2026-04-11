@@ -26,15 +26,12 @@ import time
 
 import queue
 import asyncio
-from fastapi import FastAPI, WebSocket
-
+from fastapi import FastAPI, WebSocket, BackgroundTasks
 
 import uvicorn
 import json
+
 app = FastAPI()
-
-
-
 
 
 @app.websocket("/ws")
@@ -50,7 +47,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.send_json(msg)
             await asyncio.sleep(0.05)
 
-
     asyncio.create_task(send_updates_to_ui())
 
     try:
@@ -59,7 +55,6 @@ async def websocket_endpoint(websocket: WebSocket):
             user_data = json.loads(data)
             user_text = user_data.get("text")
 
-
             broadcast_state("user_text", {"text": user_text})
             broadcast_state("state", {"status": "thinking"})
 
@@ -67,17 +62,25 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"[UI Disconnected] : {e}")
 
-    @app.post("/shutdown")
-    async def shutdown_system():
-        print("Shutdown signal received. Stopping all processes...")
-        try:
-            if hasattr(synapse_app,'vision'):
-                synapse_app.vision.close_camera()
-                time.sleep(2.5)
-        except Exception as e:
-             print(f"Error : {e}")
-        os.kill(os.getpid(), signal.SIGINT)
-        return {"message": "System is shutting down..."}
+
+def kill_server_safely():
+    time.sleep(1)
+    print("Releasing all resources")
+    os.kill(os.getpid(), signal.SIGINT)
+@app.post("/shutdown")
+async def shutdown_system(background_tasks: BackgroundTasks):
+    print(colorama.Fore.RED + "\n[System] Shutdown signal received from UI!")
+    try:
+        # Graceful hardware release
+        if 'synapse_app' in globals() and hasattr(synapse_app, 'vision'):
+            synapse_app.vision.close_camera()
+            print("Waiting 1.5s for hardware to power down...")
+            time.sleep(1.5)
+    except Exception as e:
+        print(f"Error during hardware release: {e}")
+
+    background_tasks.add_task(kill_server_safely())
+    return {"message": "Shutting down"}
 
 class Synapse:
     def __init__(self):
@@ -90,8 +93,9 @@ class Synapse:
         self.weather = Wheather_Engine()
         self.reminder = ReminderEngine(mouth=self.mouth)
         # Pass the music engine to brain
-        self.brain = LLM_Engine(music_engine=self.music, vision_engine=self.vision, reminder_engine=self.reminder)  # SHARE the same instance
-        
+        self.brain = LLM_Engine(music_engine=self.music, vision_engine=self.vision,
+                                reminder_engine=self.reminder)  # SHARE the same instance
+
         self.MIC_INDEX = 1
         self.manual_music_mode = False
         models_path = r"E:\MyProjects\CPP\Trinetra_Vision\src\hey_jarvis.onnx"
@@ -105,9 +109,6 @@ class Synapse:
         if any(phrase in text.lower() for phrase in exit_phrases):
             return True
         return False
-
-
-
 
     def start(self):
         state = AssistantState()
@@ -125,13 +126,13 @@ class Synapse:
                 if command:
                     print(f"[Heard] : {command}")
                     broadcast_state("user_text", {"text": command})
-                    main_start_time = time.perf_counter() # stopwatch
+                    main_start_time = time.perf_counter()  # stopwatch
 
                     if self.check_exit(command.lower()):
                         self.mouth.speak("Goodbye!")
                         while TTS_Engine._is_speaking:
                             time.sleep(0.1)
-                        try :
+                        try:
                             self.vision.close_camera()
                             time.sleep(2.5)
                         except Exception as e:
@@ -347,8 +348,6 @@ class Synapse:
                 self.mouth.speak("Face capture failed.")
         else:
             self.mouth.speak("Camera error.")
-
-
 
 
 if __name__ == "__main__":

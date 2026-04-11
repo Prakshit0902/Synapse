@@ -1,5 +1,4 @@
-*.h linguist-language=C++ 
-*.cpp linguist-language=C++
-*.py linguist-language=Python
+cpp/ linguist-vendored
+*.h linguist-vendored
 *.tsx linguist-language=TypeScript
-*.ts linguist-language=TypeScript
+*.py linguist-language=Python

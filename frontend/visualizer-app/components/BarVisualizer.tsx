@@ -131,57 +131,75 @@ export default function BarVisualizerDemo() {
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
+    // NodeJS.Timeout type add kiya hai TypeScript ke liye
+    let reconnectTimer: NodeJS.Timeout;
+    let isMounted = true;
 
-    wsRef.current = new WebSocket('ws://localhost:8000/ws');
-    setState("connecting");
+    function connect() {
+      if (!isMounted) return;
 
-    wsRef.current.onopen = () => {
-      console.log("Connected to Synapse Engine!");
-      setState("idle");
-    };
+      console.log("Attempting to connect to Synapse...");
+      wsRef.current = new WebSocket('ws://localhost:8000/ws');
+      setState("connecting");
 
+      wsRef.current.onopen = () => {
+        console.log("🟢 Connected to Synapse Engine!");
+        setState("idle");
+      };
 
-   wsRef.current.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+      wsRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("Received from Python:", data);
 
-        // 🔍 DEBUG LOG: Python ne exact kya bheja?
-        console.log("📥 Received from Python:", data);
+          if (data.type === "state") {
+            // Status check karo aur safe type casting karo
+            const newStatus = data.status || data.state;
 
-        if (data.type === "state") {
-          // Status check karo aur safe type casting karo
-          const newStatus = data.status || data.state; // Backup just in case
+            if (newStatus) {
+              console.log("Updating UI State to:", newStatus);
+              setState(newStatus as AgentState);
+            }
 
-          if (newStatus) {
-            console.log("🔄 Updating UI State to:", newStatus);
-            setState(newStatus as AgentState);
-          }
-
-          if (newStatus === "listening") {
+            if (newStatus === "listening") {
               setUserText(""); // Clear previous conversation
               setNainaText("");
+            }
           }
-        }
-        else if (data.type === "user_text") {
-          console.log("📝 Updating User Text:", data.text);
-          setUserText(data.text);
-        }
-        else if (data.type === "naina_text") {
-          console.log("🔊 Appending Naina Text:", data.text);
-          setNainaText((prev) => prev + " " + data.text);
-        }
+          else if (data.type === "user_text") {
+            console.log("Updating User Text:", data.text);
+            setUserText(data.text);
+          }
+          else if (data.type === "naina_text") {
+            console.log("Appending Naina Text:", data.text);
+            setNainaText((prev) => prev + " " + data.text);
+          }
 
-      } catch (error) {
-        console.error("WebSocket Message Error:", error);
-      }
-    };
+        } catch (error) {
+          console.error("WebSocket Message Error:", error);
+        }
+      };
 
-    wsRef.current.onclose = () => {
-      console.log("Disconnected from Synapse Engine");
-      setState("idle");
-    };
+      wsRef.current.onerror = (error) => {
+        console.error("🔴 WebSocket Error (Backend not ready yet)");
+        if (wsRef.current) wsRef.current.close();
+      };
+
+      wsRef.current.onclose = () => {
+        console.log("🟠 Disconnected. Retrying in 2 seconds...");
+        if (isMounted) {
+          // Ziddi Reconnect Logic
+          reconnectTimer = setTimeout(connect, 2000);
+        }
+      };
+    }
+
+    // Pehli baar connection start karo
+    connect();
 
     return () => {
+      isMounted = false;
+      clearTimeout(reconnectTimer);
       if (wsRef.current) wsRef.current.close();
     };
   }, []);
@@ -200,7 +218,7 @@ export default function BarVisualizerDemo() {
       padding: "60px 24px",
     }}>
 
-      {}
+      {/* TEXT AREA FOR CONVERSATION */}
       <div style={{ textAlign: "center", height: "80px", maxWidth: "600px" }}>
         <p style={{ color: "#06b6d4", fontSize: "16px", margin: "0 0 10px" }}>
             {userText && `You: "${userText}"`}
@@ -210,7 +228,7 @@ export default function BarVisualizerDemo() {
         </p>
       </div>
 
-      {}
+      {/* NAINA VISUALIZER BOX */}
       <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {/* Orbit rings */}
         {[1.7, 2.4, 3.2].map((scale, i) => (
@@ -228,7 +246,7 @@ export default function BarVisualizerDemo() {
           />
         ))}
 
-    {/* Main box */}
+        {/* Main box */}
         <motion.div
           animate={{ boxShadow: glow }}
           transition={{ duration: 0.6 }}
@@ -243,31 +261,31 @@ export default function BarVisualizerDemo() {
             gap: 8,
             position: "relative",
             zIndex: 1,
-            overflow: "hidden" 
+            overflow: "hidden"
           }}
         >
-          {}
+          {/* Background Text Overlay */}
           <motion.div
-            animate={{ 
+            animate={{
               color: color,
-              textShadow: `0px 0px 12px ${color}80` 
+              textShadow: `0px 0px 12px ${color}80`
             }}
             transition={{ duration: 0.5 }}
             style={{
               position: "absolute",
-              top: 24, 
+              top: 24,
               fontSize: 13,
               fontWeight: 600,
               letterSpacing: "0.4em",
               textTransform: "uppercase",
-              zIndex: 0, 
-              opacity: state === "idle" ? 0.3 : 0.9, 
+              zIndex: 0,
+              opacity: state === "idle" ? 0.3 : 0.9,
             }}
           >
             Naina
           </motion.div>
 
-          {}
+          {/* Dancing Bars */}
           <div style={{ display: "flex", gap: 8, zIndex: 2 }}>
             {heights.map((h, i) => (
               <Bar key={i} height={h} color={color} />
@@ -275,7 +293,7 @@ export default function BarVisualizerDemo() {
           </div>
         </motion.div>
 
-        {/* Label */}
+        {/* State Label Below Box */}
         <AnimatePresence mode="wait">
           <motion.p
             key={state}
