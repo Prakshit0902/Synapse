@@ -67,6 +67,18 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"[UI Disconnected] : {e}")
 
+    @app.post("/shutdown")
+    async def shutdown_system():
+        print("Shutdown signal received. Stopping all processes...")
+        try:
+            if hasattr(synapse_app,'vision'):
+                synapse_app.vision.close_camera()
+                time.sleep(2.5)
+        except Exception as e:
+             print(f"Error : {e}")
+        os.kill(os.getpid(), signal.SIGINT)
+        return {"message": "System is shutting down..."}
+
 class Synapse:
     def __init__(self):
         print(colorama.Fore.CYAN + f"Initializing Synapse AI Engine...")
