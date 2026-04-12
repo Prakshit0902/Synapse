@@ -1,5 +1,3 @@
-
-
 # SYNAPSE: Distributed Edge-Cloud AI Assistant Architecture
 **Powering *Naina* | Built from Scratch with Linux Environments**
 
@@ -18,14 +16,20 @@
 
 Synapse is the robust, multi-threaded distributed architecture built from scratch to power **Naina**, a highly dynamic personal AI assistant. 
 
-Unlike standard API wrappers, Synapse solves the heavy-compute problemassets/synapse-hld-nodes-based.png of modern LLMs and vision models by splitting the workload: a **Raspberry Pi 3** acts as the sensory edge device (mouth, eyes and ears) written purely in raw poer (C++), while a powerful **Local PC** acts as the brain (inference server) fully leveraging **NVIDIA CUDA** for parallel GPU computing.
+Unlike standard API wrappers, Synapse solves the heavy-compute problem of modern LLMs and vision models by splitting the workload: a **Raspberry Pi 3** acts as the sensory edge device (mouth, eyes and ears) written purely in raw poer (C++), while a powerful **Local PC** acts as the brain (inference server) fully leveraging **NVIDIA CUDA** for parallel GPU computing.
 
 <img src="https://cdn.pixabay.com/photo/2024/04/08/19/56/neural-network-8684318_1280.jpg">
 
 ## High Level Design 
-<img src="assets/synapse-hld-nodes-based.png"  width="20000">
 
-## **Minimum System Requirements**
+<img src="assets/synapse-hld-nodes-based.png" width="100%">
+
+## Low Level Design Of Server
+
+<img src="assets/lld-synapse.svg" width="100%">
+
+## Minimum System Requirements
+
 Before you try to clone and run it locally, let me be clear this project needs minimum these specifications to run on your local machine
 * Minimum 8 GB VRam 3060 GPU, preferably 4060
 * 16 GB Ram
@@ -41,7 +45,7 @@ Before you try to clone and run it locally, let me be clear this project needs m
 * **Hardcoded Facial Recognition:** Utilizes **InsightFace** to scan incoming frames and match them against a pre-indexed directory of labeled images, identifying exactly who is standing in front of the camera.
 * **Human-like Voice:** Text responses are synthesized through **Kokoro TTS** and streamed back to the RPi speaker for a seamless conversational loop.
 
-##  System Architecture
+## System Architecture
 
 The system is strictly divided into two independent nodes communicating over a Local Area Network (LAN). 
 
@@ -55,10 +59,11 @@ The system is strictly divided into two independent nodes communicating over a L
 * **Tech Stack:** Python, ZeroMQ, cuDNN (12.3), OpenAI Whisper (distil-large-v3), Ollama (Qwen 2.5 - 3B), Kokoro TTS, InsightFace, ChromaDB.
 * **Function:** A multi-threaded Python backend that accepts the socket stream asynchronously. It handles word detection, pushes audio and vision tasks to the GPU for inference, generates RAG-backed responses, synthesizes speech, and streams the audio back to the Rpi.
 
-###  Network & Shell Orchestration
+### Network & Shell Orchestration
 * **ZeroMQ (ZMQ):** Used for asynchronous, high-throughput, low-latency Inter-Process Communication (IPC) and network socket streaming between the C++ client and Python server.
-* **Bash/Shell Scripting:** The entire startup sequence, network binding, environment variable management, and process daemonization on both the RPi and the  server are heavily automated using pipelines of processing.
-##  Demo
+* **Bash/Shell Scripting:** The entire startup sequence, network binding, environment variable management, and process daemonization on both the RPi and the server are heavily automated using pipelines of processing.
+
+## Demo
 * Dropping soon
 
 ## The Developer Diaries: Building Synapse
@@ -72,8 +77,7 @@ Building this wasn't a walk in the park. Bridging low-level C++ with modern Pyth
 * **Episode 3: The GPU Brain Transplant.** Managing VRAM limits and tuning the Whisper -> Qwen 2.5 -> Kokoro TTS pipeline for sub-second conversational speeds using CUDA.
 * **Episode 4: Memory & Vision.** The transition from a tedious dynamic face-saving approach to a rock-solid hardcoded InsightFace directory, and plugging in ChromaDB for permanent memory.
 
-
-##  System Performance & Telemetry (Local Inference)
+## System Performance & Telemetry (Local Inference)
 
 Synapse is built with a heavy focus on **Low-Latency Edge-to-Core Architecture**. All AI models (STT, LLM, TTS, Vision) run locally on the core PC, ensuring 100% data privacy without relying on cloud APIs.
 
@@ -98,22 +102,28 @@ While software processing is highly optimized, real-world physical latency inclu
 - **VAD Pause Threshold:** ~0.5s - 0.8s (Mic waits to ensure the user has completely finished speaking).
 - **Network Routing:** ~0.1s (TCP socket transmission between Raspberry Pi and Core PC).
 - **Hardware Buffering:** ~0.2s (ALSA sound card and Pygame audio buffer initialization).
+
 ### 3. Token/sec generated form LLM
 * By the internal clock counter of LLM we derived the tokens generated per second are around 105. Here is the log reference.
-<img src ="assets/token_per_min.png" >
+
+<img src="assets/token_per_min.png">
+
 * As we know, **1 English Word =~ 3.1 tokens**. So it makes **~80 words** per second.
+
 ### Architectural Highlights
 * **Perceived Latency Optimization:** To prevent users from waiting for the full LLM response to generate, the TTS engine uses **Sentence-by-Sentence Chunking**. As soon as the LLM generates the first sentence (~390ms), the TTS begins streaming the audio. The rest of the LLM generation happens asynchronously in the background.
 * **Fallback Mechanism:** The Agentic framework dynamically measures vector-search distances. If a database match is too weak (`Distance > 1.5`), it smoothly falls back to its base General Knowledge seamlessly without crashing.
 
 ---
 **Proof of Execution (Telemetry Logs):**
- <img src="assets/performance-metrics.jpeg">
+
+<img src="assets/performance-metrics.jpeg">
 
 ## Resources Usage
-* **GPU** 
-<img src="assets/gpu.png">
+* **GPU** <img src="assets/gpu.png">
+
 * **CPU**
+
 <img src="assets/cpu.png">
 
 ## 🛣️ Roadmap
@@ -122,5 +132,6 @@ While software processing is highly optimized, real-world physical latency inclu
 - [ ] Make a Docker file to run this AI in a local environment, so you don't go through dependency hell.
 - [ ] Intensively documenting every file.
 - [x] Make a script/bat file for running as background service.
+
 ---
-*Built with grit, C++,python and lots of tea ☕.*
+*Built with grit, C++, python and lots of tea ☕.*
