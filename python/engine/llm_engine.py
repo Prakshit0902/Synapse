@@ -1,10 +1,14 @@
 import json
+import sys
 import time
 import re
+
+
 import colorama
 import ollama
 import threading
 from datetime import datetime
+
 
 from python.engine.chat_manager import ChatManager
 from python.engine.dynamic_db_engine import DynamicDBEngine
@@ -38,7 +42,31 @@ class LLM_Engine:
         self.id_manager = IdentityManager(self.dynamicDb)
         self.active_context = ""
         self.current_user = "Unknown"
+        self.model_name = "qwen2.5:3b-instruct"
 
+        try :
+            start_time = time.time()
+            models_response = ollama.list()
+            existing_models =  [m['name'] for m in models_response.get('models', [])]
+            if self.model_name not in existing_models :
+                print(colorama.Fore.YELLOW + f"AI Brain '{self.model_name}' not found locally.")
+                print(
+                    colorama.Fore.YELLOW + "First boot detected. Downloading language model (~1.9 GB)... Please do not close.")
+                for progress in ollama.pull(self.model_name, stream=True):
+                    status = progress.get('status', '')
+                    completed = progress.get('completed', 0)
+                    total = progress.get('total', 1)
+                    if total > 1:
+                        percent = (completed / total)  * 100
+                        print(f"\rDownloading: {status} - {percent:.1f}%", end="", flush=True)
+                    else :
+                        print(f"\rProcessing: {status}...", end="", flush=True)
+                print(colorama.Fore.GREEN + f"\n [LLM] Model '{self.model_name}' downloaded successfully")
+        except Exception as e :
+            print(colorama.Fore.RED + "\n [Fatal Error] Failed to connect to Ollama backend")
+            print(colorama.Fore.RED + "\n [Fatal Error] Please make sure Ollama is installed and running on background")
+            print(colorama.Fore.RED + f"\n [Fatal Error] Error details: {e}")
+            sys.exit(1)
         system_instructions = """
                 You are Naina, a witty conversational AI. 
 
@@ -200,15 +228,19 @@ class LLM_Engine:
                     make_response = self.build_response(text, data)
                     return make_response
 
+
                 elif tool_name == "add":
-                    json_info = self.extract_parameters(text)
+                    json_info = self.extract_parameters(argument)
                     if json_info and "name" in json_info:
                         extracted_name = json_info["name"].strip()
                         extracted_info = json_info.get("info", "")
 
-                        forbidden_names = ["Naina", "i", "me", "myself", "person", "someone", "unknown", "nobody",
-                                           "user"]
-                        if extracted_name.lower() in forbidden_names or len(extracted_name) < 3:
+                        forbidden_names = ["naina", "i", "me", "myself", "person", "someone",
+                                "unknown", "nobody", "user", "qwen", "llm", "ai", "model"]
+
+                        if (extracted_name.lower() in forbidden_names
+                                or len(extracted_name) < 3
+                                or not extracted_name.replace(" ", "").isalpha()):
                             print(f"Blocked Garbage Add Request: {extracted_name}")
                             return "I'm not sure who you want me to remember. Can you say the name clearly?"
 
@@ -309,28 +341,21 @@ class LLM_Engine:
         """
         detected_names = self.vision.scan_scene()
 
-        # print(f"Vision Saw: {detected_names}")
+        if not detected_names or detected_names == ["Camera Error"]:
+            self.current_user = "None"  # ✅ Reset karo
+            return "none"
 
-        if detected_names:
-            # 1. Unknown aur Error hatao
-            known_faces = [name for name in detected_names if name != "Unknown" and name != "Camera Error"]
+        known_faces = [n for n in detected_names
+                       if n not in ["Unknown", "Camera Error"]]
 
-            if known_faces:
-                raw_name = known_faces[0]  # Jaise: "Priyadarshan7"
+        if known_faces:
+            raw_name = known_faces[0].rstrip("0123456789")
+            self.current_user = raw_name if raw_name else known_faces[0]
+        elif "Unknown" in detected_names:
+            self.current_user = "Unknown"
+        else:
+            self.current_user = "None"
 
-                # String ke end se 0-9 tak saare digits uda do
-                clean_name = raw_name.rstrip("0123456789")
-
-                # Agar galti se pura naam hi number tha (kam chance hai), to wapas raw rakh lo
-                if len(clean_name) > 0:
-                    self.current_user = clean_name
-                else:
-                    self.current_user = raw_name
-
-            elif "Unknown" in detected_names:
-                self.current_user = "Unknown"
-
-        # Agar koi nahi dikha to purana user hi rahega
         return self.current_user.lower()
 
     def extract_parameters(self, text):
