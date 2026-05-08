@@ -19,7 +19,7 @@ Release/
 *.exe
 
 python/engine/reminders.json
-python/engine/known_faces
+python/engine/known_faces/
 
 # Python Specific 
 python/venv/
