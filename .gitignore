@@ -29,10 +29,14 @@ python/synapse_env/
 *.pyo
 *.pyd
 
+
+
 # tsx wali
 frontend/visualizer-app/.next
 frontend/visualizer-app/node_modules
-
+frontend/visualizer-app/dist/
+frontend/visualizer-app/out/
+node_modules/
 
 # Database files (Ye lock hoti hain)
 *.db
