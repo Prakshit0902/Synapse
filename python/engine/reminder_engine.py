@@ -3,9 +3,13 @@ from datetime import datetime
 import colorama
 import json
 import os
+import sys
 
+# Production ready: Store data in user's home directory so it's not read-only
+user_home = os.path.expanduser("~")
+BASE_DIR = os.path.join(user_home, ".naina_ai")
+os.makedirs(BASE_DIR, exist_ok=True)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 REMINDERS_FILE = os.path.join(BASE_DIR, "reminders.json")
 
 class ReminderEngine:
@@ -123,5 +127,3 @@ class ReminderEngine:
 
     def shutdown(self):
         self.scheduler.shutdown()
-
-

@@ -5,7 +5,7 @@ echo ==========================================
 
 echo.
 echo [1/3] Building Python Backend with Nuitka...
-:: call build_nuitka.bat
+call build_nuitka.bat
 
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Backend build failed!
@@ -33,13 +33,7 @@ if %ERRORLEVEL% neq 0 (
     exit /b %ERRORLEVEL%
 )
 
-echo.
-echo [3/3] Building and Packaging Frontend with Electron...
-call npm run pack-app
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Frontend packaging failed!
-    exit /b %ERRORLEVEL%
-)
+
 
 echo.
 echo ==========================================

@@ -1,14 +1,43 @@
 import os
-
+import json
+import sys
 import requests
 
 class Wheather_Engine:
     def __init__(self):
-        # -> OpenWeather se tempreature pta lagayenge
-        self.api_key = os.getenv("api_key")
+        # Production ready: Store data in user's home directory
+        user_home = os.path.expanduser("~")
+        self.BASE_DIR = os.path.join(user_home, ".naina_ai")
+        os.makedirs(self.BASE_DIR, exist_ok=True)
+        self.config_file = os.path.join(self.BASE_DIR, "config.json")
+        
+        self.api_key = self._get_api_key()
         self.base_url = "http://api.openweathermap.org/data/2.5/weather"
 
+    def _get_api_key(self):
+        # Default key (If you want to keep yours, otherwise replace with empty string "")
+        default_key = "7c880ab8a64eddb3de89b7e500536d9c"
+        
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, "r") as f:
+                    config = json.load(f)
+                    return config.get("openweathermap_api_key", default_key)
+            except Exception:
+                return default_key
+        else:
+            # Create default config file if it doesn't exist
+            try:
+                with open(self.config_file, "w") as f:
+                    json.dump({"openweathermap_api_key": default_key}, f, indent=4)
+            except Exception:
+                pass
+            return default_key
+
     def get_weather(self, city):
+        if not self.api_key or self.api_key == "":
+            return "Weather API key is not configured. Please add it to your configuration file."
+            
         params = {
             'q': city,
             'appid': self.api_key,
@@ -51,7 +80,6 @@ class Wheather_Engine:
                 return f"Temperature: {temp}°C, Condition: {desc.title()}, Humidity: {humidity}%, Wind: {wind_speed} m/s"
                 
             else:
-                print(f"This is the api : {self.api_key}")
                 print(f"❌ Error: {data['message']}")
                 return f"Weather data not available for {city}. Error: {data['message']}"
                 
@@ -63,6 +91,5 @@ class Wheather_Engine:
 if __name__ == "__main__":
     bot = Wheather_Engine()  # Fixed class name here too
     city = input("Enter City Name: ")
-    print(f"This is the api : " )
     result = bot.get_weather(city)
     print(f"Returned: {result}")

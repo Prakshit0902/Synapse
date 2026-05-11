@@ -31,7 +31,12 @@ from fastapi import FastAPI, WebSocket, BackgroundTasks
 import uvicorn
 import json
 
+
+
+
+
 app = FastAPI()
+
 
 
 @app.websocket("/ws")
@@ -62,6 +67,25 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         print(f"[UI Disconnected] : {e}")
 
+import sys
+import logging
+
+# App jahan install hui hai, wahi error.log banegi
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+log_path = os.path.join(BASE_DIR, 'naina_crash.log')
+
+logging.basicConfig(filename=log_path, level=logging.ERROR,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+def global_exception_handler(exctype, value, traceback):
+    logging.error("Uncaught Exception", exc_info=(exctype, value, traceback))
+    sys.__excepthook__(exctype, value, traceback)
+
+sys.excepthook = global_exception_handler
 
 def kill_server_safely():
     time.sleep(1)
@@ -98,8 +122,20 @@ class Synapse:
 
         self.MIC_INDEX = 1
         self.manual_music_mode = False
-        models_path = r"E:\MyProjects\CPP\Trinetra_Vision\src\hey_jarvis.onnx"
-        self.model = Model(wakeword_models=[models_path])
+        
+        # FIX Wakeword model path for bundled exe
+        if getattr(sys, 'frozen', False):
+             models_path = os.path.join(os.path.dirname(sys.executable), "src", "hey_jarvis.onnx")
+        else:
+             models_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "src", "hey_jarvis.onnx")
+
+        # Fallback agar file na ho (It'll download default ones from openwakeword)
+        try:
+             self.model = Model(wakeword_models=[models_path])
+        except Exception as e:
+             print(colorama.Fore.YELLOW + f"Wakeword model {models_path} not found. Falling back to default wake words...")
+             self.model = Model()
+
         self.mouth.speak("Hi there")
 
     def check_exit(self, text):

@@ -21,8 +21,9 @@ from python.engine.weather_system import Wheather_Engine
 class LLM_Engine:
     def __init__(self, music_engine=None, vision_engine=None, reminder_engine=None):
         # Naina System Prompt (Strict Language Enforcer)
-        print(colorama.Fore.YELLOW + "[LLM] Initializing Whisper Model...")
+        print(colorama.Fore.YELLOW + "[LLM] Initializing AI Brain...")
         self.reminder_engine = reminder_engine
+
         # Use provided music engine
         if music_engine:
             self.music = music_engine
@@ -44,29 +45,42 @@ class LLM_Engine:
         self.current_user = "Unknown"
         self.model_name = "qwen2.5:3b-instruct"
 
-        try :
+        try:
             start_time = time.time()
             models_response = ollama.list()
-            existing_models =  [m['name'] for m in models_response.get('models', [])]
-            if self.model_name not in existing_models :
-                print(colorama.Fore.YELLOW + f"AI Brain '{self.model_name}' not found locally.")
+
+            # --- OLLAMA API UPDATE FIX ---
+            existing_models = []
+            if hasattr(models_response, 'models'):  # Agar naya ollama package hai (Object based)
+                existing_models = [getattr(m, 'model', getattr(m, 'name', '')) for m in models_response.models]
+            else:  # Agar purana ollama package hai (Dict based)
+                existing_models = [m.get('model', m.get('name', '')) for m in models_response.get('models', [])]
+            # -----------------------------
+
+            if self.model_name not in existing_models:
+                print(colorama.Fore.YELLOW + f"⚠️ AI Brain '{self.model_name}' not found locally.")
                 print(
-                    colorama.Fore.YELLOW + "First boot detected. Downloading language model (~1.9 GB)... Please do not close.")
+                    colorama.Fore.YELLOW + "⏳ First boot detected. Downloading language model (~1.9 GB)... Please do not close.")
                 for progress in ollama.pull(self.model_name, stream=True):
                     status = progress.get('status', '')
                     completed = progress.get('completed', 0)
                     total = progress.get('total', 1)
                     if total > 1:
-                        percent = (completed / total)  * 100
+                        percent = (completed / total) * 100
                         print(f"\rDownloading: {status} - {percent:.1f}%", end="", flush=True)
-                    else :
+                    else:
                         print(f"\rProcessing: {status}...", end="", flush=True)
-                print(colorama.Fore.GREEN + f"\n [LLM] Model '{self.model_name}' downloaded successfully")
-        except Exception as e :
-            print(colorama.Fore.RED + "\n [Fatal Error] Failed to connect to Ollama backend")
-            print(colorama.Fore.RED + "\n [Fatal Error] Please make sure Ollama is installed and running on background")
-            print(colorama.Fore.RED + f"\n [Fatal Error] Error details: {e}")
+                print(colorama.Fore.GREEN + f"\n✅ [LLM] Model '{self.model_name}' downloaded successfully")
+            else:
+                print(colorama.Fore.CYAN + f"[LLM] Local brain '{self.model_name}' found.")
+
+        except Exception as e:
+            print(colorama.Fore.RED + "\n❌ [Fatal Error] Failed to connect to Ollama backend")
+            print(colorama.Fore.RED + "❌ Please make sure Ollama is installed and running on background")
+            print(colorama.Fore.RED + f"Error details: {e}")
+            import sys
             sys.exit(1)
+
         system_instructions = """
                 You are Naina, a witty conversational AI. 
 
@@ -81,8 +95,8 @@ class LLM_Engine:
         self.history = [
             {"role": "system", "content": system_instructions}
         ]
-        start_time = time.time()
-        print(colorama.Fore.GREEN + f"[LLM] Model loaded in {time.time() - start_time:.2f} seconds")
+
+        print(colorama.Fore.GREEN + f"[LLM] Engine initialized successfully in {time.time() - start_time:.2f} seconds")
 
     def run_agentic_llm(self, text):
         """

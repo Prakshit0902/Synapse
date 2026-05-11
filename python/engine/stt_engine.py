@@ -5,6 +5,7 @@ import time
 import colorama
 
 import os
+import sys
 
 from python.engine.event_bus import broadcast_state
 
@@ -22,20 +23,27 @@ class STT_Engine:
         compute_type = "int8"  # CPU ke liye "int8" use karna
 
         user_home = os.path.expanduser("~")
-        model_folder = os.path.join(user_home, ".cache", "huggingface", "hub",
-                                    "models--Systran--faster-whisper-distil-large-v3")
+        hf_cache_dir = os.path.join(user_home, ".cache", "huggingface", "hub")
+
+        # Smart Check: Agar hub folder hai, aur usme kisi bhi folder ke naam mein "whisper" hai
+        local_model_exists = False
+        if os.path.exists(hf_cache_dir):
+            for folder_name in os.listdir(hf_cache_dir):
+                if "whisper" in folder_name.lower():
+                    local_model_exists = True
+                    break
 
         try:
-            if not os.path.exists(model_folder):
-                print(colorama.Fore.YELLOW + "AI Models not found on this PC.")
+            if not local_model_exists:
+                print(colorama.Fore.YELLOW + "⚠️ AI Models not found on this PC.")
                 print(
-                    colorama.Fore.YELLOW + "First boot detected. Downloading official models (~1.5 GB)... Please keep internet ON and do not close the app.")
+                    colorama.Fore.YELLOW + "⏳ First boot detected. Downloading official models (~1.5 GB)... Please keep internet ON and do not close the app.")
             else:
-                print(colorama.Fore.CYAN + "[STT] Local models found. Booting offline...")
+                print(colorama.Fore.CYAN + "[STT] Local Whisper models found in cache. Booting offline...")
 
             start_time = time.time()
             self.model = WhisperModel(model_size, device=device, compute_type=compute_type)
-            print(colorama.Fore.GREEN + f"[STT] Model loaded successfully in {time.time() - start_time:.2f} seconds")
+            print(colorama.Fore.GREEN + f"✅ [STT] Model loaded successfully in {time.time() - start_time:.2f} seconds")
 
         except Exception as e:
             print(
@@ -50,7 +58,7 @@ class STT_Engine:
         self.recognizer.dynamic_energy_threshold = True
 
     def listen(self):
-        from tts_engine import TTS_Engine
+        from python.engine.tts_engine import TTS_Engine
         while TTS_Engine._is_speaking:
             time.sleep(0.05)
         time.sleep(0.5)
@@ -174,7 +182,6 @@ class STT_Engine:
                 print(colorama.Fore.RED + f"[STT Edge Error]: {e}")
                 return None
 
-# Testing Code (Sirf tab chalega jab is file ko directly run karoge)
 # Testing Code (Sirf tab chalega jab is file ko directly run karoge)
 if __name__ == "__main__":
     try:

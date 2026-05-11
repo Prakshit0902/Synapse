@@ -36,34 +36,68 @@ class TTS_Engine:
     _kokoro = None
 
     def __init__(self):
+        print(colorama.Fore.CYAN + "[TTS] Initializing Voice Engine...")
+
         if not pygame.mixer.get_init():
             pygame.mixer.init()
 
-        self._ensure_models_exist()
+        # Step 1: Model check karo, agar nahi hai toh download (With absolute paths)
+        model_path, voices_path = self._ensure_models_exist()
 
+        # Step 2: Initialize Kokoro with Dynamic Paths
         if TTS_Engine._kokoro is None:
-            print("Loading Kokoro ONNX on CPU...")
             try:
-                TTS_Engine._kokoro = Kokoro("kokoro-v0_19.onnx", "voices.bin")
-                print("Kokoro Loaded Successfully. 🟢")
+                start_time = time.time()
+                TTS_Engine._kokoro = Kokoro(model_path, voices_path)
+                print(
+                    colorama.Fore.GREEN + f"✅ [TTS] Voice Engine Loaded Successfully in {time.time() - start_time:.2f} seconds.")
             except Exception as e:
-                print(f"CRITICAL ERROR: {e}")
+                print(colorama.Fore.RED + f"❌ [Fatal Error] Failed to load TTS models: {e}")
+                import sys
+                sys.exit(1)
 
         self.hindi_voice = "af_bella"
         self.english_voice = "af_sarah"
 
     def _ensure_models_exist(self):
+        # Universal safe folder approach (Jaise Whisper aur InsightFace ke liye kiya)
+        user_home = os.path.expanduser("~")
+        model_dir = os.path.join(user_home, ".cache", "naina_tts")
+        os.makedirs(model_dir, exist_ok=True)
+
         files = ["kokoro-v0_19.onnx", "voices.bin"]
         base_url = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/"
 
-        for file in files:
-            if not os.path.exists(file):
-                print(f"Downloading {file}...")
+        model_path = os.path.join(model_dir, files[0])
+        voices_path = os.path.join(model_dir, files[1])
+
+        missing_files = []
+        if not os.path.exists(model_path): missing_files.append((files[0], model_path))
+        if not os.path.exists(voices_path): missing_files.append((files[1], voices_path))
+
+        if missing_files:
+            print(colorama.Fore.YELLOW + "⚠️ Voice Models (TTS) not found locally.")
+            print(
+                colorama.Fore.YELLOW + "⏳ First boot detected. Downloading Voice models (~100 MB)... Please keep internet ON.")
+
+            # Live Progress Bar Generator Hook
+            def progress_hook(count, block_size, total_size):
+                if total_size > 0:
+                    percent = min(100.0, float(count * block_size * 100 / total_size))
+                    print(f"\rDownloading: {percent:.1f}%", end="", flush=True)
+
+            for file_name, save_path in missing_files:
+                print(colorama.Fore.CYAN + f"\nFetching {file_name}...")
                 try:
-                    urllib.request.urlretrieve(base_url + file, file)
-                    print(f"Downloaded {file}")
+                    urllib.request.urlretrieve(base_url + file_name, save_path, reporthook=progress_hook)
+                    print(colorama.Fore.GREEN + f"\n✅ {file_name} downloaded securely.")
                 except Exception as e:
-                    print(f"Failed to download {file}: {e}")
+                    print(colorama.Fore.RED + f"\n❌ Failed to download {file_name}. Internet issue?")
+                    print(colorama.Fore.RED + f"Error details: {e}")
+                    import sys
+                    sys.exit(1)
+
+        return model_path, voices_path
 
     @classmethod
     def stop(cls):

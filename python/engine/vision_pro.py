@@ -1,3 +1,4 @@
+import threading
 import cv2
 import numpy as np
 import sqlite3
@@ -7,46 +8,93 @@ from insightface.app import FaceAnalysis
 import pickle
 import json
 import colorama
-import os  # < Added Import
+import os
+import sys
 from thefuzz import process
 
 
 class Vision_Pro:
     def __init__(self):
-        print('Initializing Vision Pro Engine...')
-        self.yolo = YOLO('yolov8n.pt')
+        print(colorama.Fore.CYAN + '[Vision] Initializing Vision Pro Engine...')
+        self.yolo = YOLO('yolov8n.pt')  # Note: YOLOv8 bhi first boot pe auto-download hota hai (~6MB)
         self.is_running = True
 
-        self.app = FaceAnalysis(
-            name='buffalo_s',
-            root='C:/Users/priya/.insightface',
-            providers=['CUDAExecutionProvider']
-        )
-        self.app.prepare(ctx_id=0, det_size=(640, 640))
 
-        self.conn = sqlite3.connect('vision_pro.db', check_same_thread=False)
+        user_home = os.path.expanduser("~")
+        insightface_root = os.path.join(user_home, ".insightface")
+        model_path = os.path.join(insightface_root, "models", "buffalo_s")
+
+        if not os.path.exists(model_path):
+            print(colorama.Fore.YELLOW + "Face Recognition models not found locally.")
+            print(
+                colorama.Fore.YELLOW + "First boot detected. Downloading Vision models (~330 MB)... Please keep internet ON and do not close.")
+        else:
+            print(colorama.Fore.CYAN + "[Vision] Local models found. Booting offline...")
+
+        try:
+            start_time = time.time()
+            self.app = FaceAnalysis(
+                name='buffalo_s',
+                root=insightface_root,  # <-- Ab ye kisi ke bhi PC par chalega
+                providers=['CUDAExecutionProvider']
+            )
+            self.app.prepare(ctx_id=0, det_size=(640, 640))
+            print(
+                colorama.Fore.GREEN + f"[Vision] Model loaded successfully in {time.time() - start_time:.2f} seconds")
+        except Exception as e:
+            print(
+                colorama.Fore.RED + "[Fatal Error] Failed to load or download Vision models. Please check your internet connection!")
+            print(colorama.Fore.RED + f"Error Details: {e}")
+
+        if getattr(sys, 'frozen', False):
+            BASE_DIR = os.path.dirname(sys.executable)
+        else:
+            BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+        db_path = os.path.join(BASE_DIR, 'vision_pro.db')
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
 
         self.setup_db()
-
-
         self.import_from_folder()
-
 
         self.known_names = []
         self.known_embeddings = []
         self.known_info = []
         self.load_memory()
 
+        # Pehle normal index 0 try karega
+        print(colorama.Fore.CYAN + '[Vision] Warming up Camera...')
         self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        print('Vision Pro Engine Ready.')
+
+        # Agar 0 fail hua (virtual camera clash ki wajah se), to Index 1 try karega
+        if not self.cap.isOpened():
+            print(colorama.Fore.YELLOW + "Index 0 failed, trying Index 1 with DSHOW...")
+            self.cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+
+        self.cam_lock = threading.Lock()
+
+        print(colorama.Fore.GREEN + 'Vision Pro Engine Ready.')
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close_camera()
+        return False
 
     def import_from_folder(self):
         """
         Scans 'known_faces' folder.
         If you put 'ankit.jpg' there, it automatically registers 'Ankit' into the DB.
         """
-        folder_path = "known_faces"
+        
+        if getattr(sys, 'frozen', False):
+            BASE_DIR = os.path.dirname(sys.executable)
+        else:
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        folder_path = os.path.join(BASE_DIR, "known_faces")
 
         # Create folder if it doesn't exist
         if not os.path.exists(folder_path):
@@ -92,10 +140,6 @@ class Vision_Pro:
                 # Prepare DB Entry
                 binary_enc = pickle.dumps(embedding)
                 info = json.dumps({"details": "Imported from file", "added_on": time.strftime("%Y-%m-%d")})
-
-                # Insert into DB (4 Times to match the structure expected by other functions if needed, or just 1 is fine usually, but let's stick to 1 for import)
-                # Note: The original register_face adds 4 entries (front, left, right, smile).
-                # For file import, we usually have only 1. We will add it once.
 
                 try:
                     self.cursor.execute("INSERT INTO humans (name, embedding, info) VALUES (?, ?, ?)",
@@ -154,7 +198,6 @@ class Vision_Pro:
         print(colorama.Fore.GREEN + f"[Vision] Loaded {len(self.known_names)} identities.")
 
     def register_face(self, frame, name, info_dict, tts_engine):
-        # (Keeping your original manual registration logic here unchanged)
         def speak_and_wait(text, wait_for_user_seconds=0):
             if tts_engine:
                 tts_engine.speak(text)
@@ -168,7 +211,13 @@ class Vision_Pro:
                 time.sleep(wait_for_user_seconds)
 
         import os
-        folder_path = "registered_faces"
+        if getattr(sys, 'frozen', False):
+            BASE_DIR = os.path.dirname(sys.executable)
+        else:
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        folder_path = os.path.join(BASE_DIR, "registered_faces")
+
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
@@ -268,7 +317,7 @@ class Vision_Pro:
                 best_idx = np.argmax(sims)
                 max_score = sims[best_idx]
 
-                if max_score > 0.4:
+                if max_score > 0.45:
                     name = self.known_names[best_idx]
                     info = self.known_info[best_idx]
 
@@ -284,30 +333,43 @@ class Vision_Pro:
 
     def close_camera(self):
         self.is_running = False
-        time.sleep(0.5)
-        for _ in range(5):
-            if self.cap is not None and self.cap.isOpened():
+
+        if self.cap is not None and self.cap.isOpened():
+            # Pehle saare pending frames flush karo
+            for _ in range(5):
                 self.cap.read()
-                self.cap.release()
+
+            self.cap.release()
+            self.cap = None
+
         cv2.destroyAllWindows()
+        cv2.waitKey(1)
+
+        import time
+        time.sleep(0.5)
+
         print("Camera Resource Released.")
 
     def scan_scene(self):
         if self.cap is None or not self.cap.isOpened():
             return ["Camera Error"]
-        ret, frame = self.cap.read()
-        if not ret:
-            return ["Camera Error"]
-        results = self.recognize(frame)
-        if not results:
-            return []
-        found_names = []
-        for face in results:
-            found_names.append(face['name'])
-        return found_names
+
+        with self.cam_lock:
+            best_names = []
+            for _ in range(3):
+                ret, frame = self.cap.read()
+                if not ret:
+                    continue
+                results = self.recognize(frame)
+                names = [f['name'] for f in results]
+                known = [n for n in names if n != "Unknown"]
+                if known:
+                    return known
+                if names:
+                    best_names = names
+            return best_names if best_names else []
 
     def get_info(self, name_query):
-        # (Same as before)
         try:
             self.cursor.execute("SELECT name, info FROM humans WHERE name LIKE ?", (name_query,))
             row = self.cursor.fetchone()
@@ -320,34 +382,64 @@ class Vision_Pro:
     def check_person_exists(self, final_name):
         pass
 
-
 if __name__ == "__main__":
     v = Vision_Pro()
 
     print("\n TEST MODE: Press 'q' to quit ")
-    print("1. If you added photos in 'known_faces', they are imported now.")
     print("2. The camera will now try to recognize you.")
 
+    # Warmup — camera ko settle hone do
+    print("Warming up camera...")
+    for _ in range(10):
+        with v.cam_lock:
+            if v.cap and v.cap.isOpened():
+                v.cap.read()
+    print("Camera ready!")
+
+    frame_counter = 0
+    current_detections = []  # Puraane detections hold karne ke liye
+
     while True:
-        ret, frame = v.cap.read()
-        if not ret: break
+        with v.cam_lock:
+            ret, frame = v.cap.read()
 
-        detections = v.recognize(frame)
+        if not ret or frame is None:
+            time.sleep(0.01)
+            continue
 
-        for d in detections:
+        frame_counter += 1
+
+
+        # AI model ko har 3rd frame par hi run karo, baaki time purana data dikhao
+        if frame_counter % 3 == 0:
+            current_detections = v.recognize(frame)
+
+        # Draw bounding boxes using the latest available detections
+        for d in current_detections:
             x1, y1, x2, y2 = d['bbox']
             name = d['name']
             score = d['score']
-
             color = (0, 255, 0) if name != "Unknown" else (0, 0, 255)
+
+            # Box draw karo
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
 
+            # Label aur score dikhao
             label = f"{name} ({int(score * 100)}%)"
-            cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.putText(frame, label, (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
         cv2.imshow("Vision Pro Test", frame)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        # UI event loop ko saans lene ka time do
+        key = cv2.waitKey(1) & 0xFF
+
+        if key == ord('q'):
+            print("User pressed 'q', exiting test mode...")
+            break
+
+        if cv2.getWindowProperty("Vision Pro Test", cv2.WND_PROP_VISIBLE) < 1:
+            print("Window closed by user, exiting test mode...")
             break
 
     v.close_camera()

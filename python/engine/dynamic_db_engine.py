@@ -1,17 +1,22 @@
 import os
+import sys
 import chromadb
 
 
 class DynamicDBEngine:
     def __init__(self):
-        # Path fix (Windows/Linux compatible)
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        db_dir = os.path.join(base_dir, "naina_memory_db")
+        # Production ready: Store data in user's home directory so it's not read-only
+        user_home = os.path.expanduser("~")
+        BASE_DIR = os.path.join(user_home, ".naina_ai")
+        os.makedirs(BASE_DIR, exist_ok=True)
 
-        self.client = chromadb.PersistentClient(path=db_dir)
+        # Ab apne saare paths is BASE_DIR se jod de
+        db_path = os.path.join(BASE_DIR, 'naina_memory_db')
+
+        self.client = chromadb.PersistentClient(path=db_path)
         self.collection = self.client.get_or_create_collection("people_memory")
 
-        print(f"[DB] Connected to: {db_dir}")
+        print(f"[DB] Connected to: {db_path}")
         count = self.collection.count()
         print(f"[DB] Total Memories: {count}")
 
@@ -45,6 +50,7 @@ class DynamicDBEngine:
         except Exception as e:
             print(f"[DB] Save Error: {e}")
             return False
+
     def update_user(self,name, info):
         clean_id =  name.strip().lower()
 
@@ -52,7 +58,7 @@ class DynamicDBEngine:
             existing_info = self.collection.get(ids=[clean_id])
             if existing_info and existing_info['documents']:
                 old_info = existing_info['documents'][0]
-                update_info = f"{old_info, info}"
+                update_info = f"{old_info}. {info}"
             else :
                 update_info = info
             self.collection.upsert(
@@ -65,6 +71,16 @@ class DynamicDBEngine:
             print("DB update error:")
             return False
 
+    def check_person_exists(self, name):
+        clean_id = name.strip().lower()
+        try:
+            result = self.collection.get(ids=[clean_id])
+            if result and result['ids']:
+                return True
+            return False
+        except Exception as e:
+            print(f"[DB] Check Error: {e}")
+            return False
 
     def find_user(self, name):
         clean_query = name.strip().lower()

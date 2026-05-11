@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "start-desktop": "electron ."
+    "start-desktop": "electron .",
+    "pack-app": "next build && electron-builder"
   },
   "dependencies": {
     "motion": "^11.15.0",
@@ -19,6 +20,40 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "electron": "^41.2.0",
+    "electron-builder": "^25.1.8",
     "typescript": "^5"
+  },
+  "build": {
+    "appId": "com.synapse.naina",
+    "productName": "Naina AI",
+    "win": {
+      "icon": "icon.ico",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Naina AI"
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "icon.ico",
+      "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../../python/engine/build_naina/main.dist",
+        "to": "naina_backend",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
   }
 }

@@ -1,12 +1,21 @@
 import sqlite3
 import json
 import uuid
+import os
+import sys
 from datetime import datetime
 
 
 class ChatManager:
     def __init__(self, db_name="chat_history.db"):
-        self.conn = sqlite3.connect(db_name, check_same_thread=False)
+        # Production ready: Store data in user's home directory so it's not read-only
+        user_home = os.path.expanduser("~")
+        BASE_DIR = os.path.join(user_home, ".naina_ai")
+        os.makedirs(BASE_DIR, exist_ok=True)
+
+        db_path = os.path.join(BASE_DIR, db_name)
+        
+        self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.cursor = self.conn.cursor()
         self.create_tables()
 
