@@ -1,6 +1,8 @@
 import signal
-
-import pyaudio
+try:
+    import pyaudio
+except ImportError:
+    pyaudio = None
 import pygame
 
 from python.engine.assistant_state_manager import AssistantState
